@@ -1,0 +1,61 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../../../.copilot/skills"
+		},
+		{
+			"path": "../../../../.copilot/instructions"
+		},
+		{
+			"path": "../../../../AppData/Roaming/Code/User"
+		}
+	],
+	"settings": {
+		// Font: Cascadia/JetBrains if present, Consolas as installed fallback
+		"editor.fontFamily": "'Cascadia Code', 'JetBrains Mono', Consolas, 'Courier New', monospace",
+		"editor.fontSize": 15,
+		"editor.lineHeight": 1.6,
+		"editor.letterSpacing": 0.3,
+		"editor.fontLigatures": true,
+		"editor.fontWeight": "400",
+		"terminal.integrated.fontFamily": "'Cascadia Mono', Consolas, monospace",
+		"terminal.integrated.fontSize": 14,
+		"terminal.integrated.lineHeight": 1.2,
+		"markdown.preview.fontSize": 15,
+		"markdown.preview.lineHeight": 1.7,
+
+		// Eye comfort: less visual noise, softer motion
+		"editor.cursorBlinking": "smooth",
+		"editor.cursorSmoothCaretAnimation": "on",
+		"editor.smoothScrolling": true,
+		"workbench.list.smoothScrolling": true,
+		"editor.renderLineHighlight": "all",
+		"editor.renderWhitespace": "none",
+		"editor.minimap.enabled": false,
+		"editor.bracketPairColorization.enabled": true,
+		"editor.guides.bracketPairs": "active",
+		"editor.wordWrap": "on",
+		"editor.padding.top": 8,
+		"workbench.tree.indent": 14,
+		"workbench.tree.renderIndentGuides": "always",
+
+		// Material Icon Theme (pkief.material-icon-theme)
+		"workbench.iconTheme": "material-icon-theme",
+		"material-icon-theme.folders.theme": "specific",
+		"material-icon-theme.folders.color": "#90a4ae",
+		"material-icon-theme.saturation": 0.8,
+		"material-icon-theme.opacity": 0.95,
+		"material-icon-theme.folders.associations": {
+			"doc": "docs",
+			"work": "project",
+			"memos": "review",
+			"skills": "tools",
+			"instructions": "rules",
+			"prompts": "template"
+		},
+		"powershell.cwd": "Election"
+	}
+}

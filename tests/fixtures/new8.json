@@ -1,0 +1,533 @@
+{
+  "schemaVersion": 5,
+  "id": "questionnaire",
+  "name": "",
+  "notes": "",
+  "inputMode": "parties",
+  "rules": {
+    "populationTotal": "1000000",
+    "seatCount": 120,
+    "majorityMode": "default",
+    "majorityOverride": null,
+    "threshold": "0.0325",
+    "allocationMethod": "hamilton",
+    "overallTurnout": {
+      "numerator": "1560000",
+      "denominator": "2564959"
+    },
+    "validBallotRate": "0.999"
+  },
+  "groups": [
+    {
+      "id": "secular",
+      "name": "",
+      "notes": "",
+      "growthRate": "0.0025",
+      "turnout": {
+        "numerator": "1",
+        "denominator": "2"
+      },
+      "turnoutChange": "0"
+    },
+    {
+      "id": "G2",
+      "name": "Традиционные евреи, масорти ле дати",
+      "notes": "",
+      "growthRate": "0.005",
+      "turnout": {
+        "numerator": "3",
+        "denominator": "5"
+      },
+      "turnoutChange": "0"
+    },
+    {
+      "id": "religious",
+      "name": "",
+      "notes": "",
+      "growthRate": "0.0075",
+      "turnout": {
+        "numerator": "13",
+        "denominator": "20"
+      },
+      "turnoutChange": "0"
+    },
+    {
+      "id": "G4",
+      "name": "Вязанние кипы, поселенцы",
+      "notes": "",
+      "growthRate": "0.01",
+      "turnout": {
+        "numerator": "4",
+        "denominator": "5"
+      },
+      "turnoutChange": "0"
+    },
+    {
+      "id": "G5",
+      "name": "Арабские граждане",
+      "notes": "",
+      "growthRate": "0.015",
+      "turnout": {
+        "numerator": "13",
+        "denominator": "20"
+      },
+      "turnoutChange": "0"
+    },
+    {
+      "id": "haredi",
+      "name": "",
+      "notes": "",
+      "growthRate": "0.025",
+      "turnout": {
+        "numerator": "4",
+        "denominator": "5"
+      },
+      "turnoutChange": "0"
+    },
+    {
+      "id": "other",
+      "name": "",
+      "notes": "",
+      "growthRate": "0.005",
+      "turnout": {
+        "numerator": "3",
+        "denominator": "5"
+      },
+      "turnoutChange": "0"
+    }
+  ],
+  "parties": [
+    {
+      "id": "P1",
+      "name": "Ликуд без Биби",
+      "notes": "",
+      "color": "#1f77b4",
+      "blockId": null,
+      "tieBreakOrder": 1,
+      "canJoinGovernment": true,
+      "voteShare": {
+        "numerator": "19",
+        "denominator": "100"
+      },
+      "composition": {
+        "secular": {
+          "numerator": "3",
+          "denominator": "10"
+        },
+        "G2": {
+          "numerator": "39",
+          "denominator": "100"
+        },
+        "religious": {
+          "numerator": "3",
+          "denominator": "20"
+        },
+        "G4": {
+          "numerator": "1",
+          "denominator": "10"
+        },
+        "G5": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "haredi": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "other": {
+          "numerator": "3",
+          "denominator": "50"
+        }
+      }
+    },
+    {
+      "id": "P2",
+      "name": "Религиозный сионизм ",
+      "notes": "",
+      "color": "#d62728",
+      "blockId": null,
+      "tieBreakOrder": 2,
+      "canJoinGovernment": true,
+      "voteShare": {
+        "numerator": "3",
+        "denominator": "25"
+      },
+      "composition": {
+        "secular": {
+          "numerator": "1",
+          "denominator": "20"
+        },
+        "G2": {
+          "numerator": "1",
+          "denominator": "20"
+        },
+        "religious": {
+          "numerator": "1",
+          "denominator": "10"
+        },
+        "G4": {
+          "numerator": "4",
+          "denominator": "5"
+        },
+        "G5": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "haredi": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "other": {
+          "numerator": "0",
+          "denominator": "1"
+        }
+      }
+    },
+    {
+      "id": "P3",
+      "name": "Другой Государственный лагерь ",
+      "notes": "",
+      "color": "#2ca02c",
+      "blockId": null,
+      "tieBreakOrder": 3,
+      "canJoinGovernment": true,
+      "voteShare": {
+        "numerator": "19",
+        "denominator": "100"
+      },
+      "composition": {
+        "secular": {
+          "numerator": "13",
+          "denominator": "20"
+        },
+        "G2": {
+          "numerator": "1",
+          "denominator": "4"
+        },
+        "religious": {
+          "numerator": "1",
+          "denominator": "20"
+        },
+        "G4": {
+          "numerator": "1",
+          "denominator": "20"
+        },
+        "G5": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "haredi": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "other": {
+          "numerator": "0",
+          "denominator": "1"
+        }
+      }
+    },
+    {
+      "id": "shas",
+      "name": "",
+      "notes": "",
+      "color": "#475569",
+      "blockId": null,
+      "tieBreakOrder": 4,
+      "canJoinGovernment": true,
+      "voteShare": {
+        "numerator": "2",
+        "denominator": "25"
+      },
+      "composition": {
+        "secular": {
+          "numerator": "2",
+          "denominator": "25"
+        },
+        "G2": {
+          "numerator": "1",
+          "denominator": "10"
+        },
+        "religious": {
+          "numerator": "3",
+          "denominator": "4"
+        },
+        "G4": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "G5": {
+          "numerator": "1",
+          "denominator": "100"
+        },
+        "haredi": {
+          "numerator": "1",
+          "denominator": "100"
+        },
+        "other": {
+          "numerator": "1",
+          "denominator": "20"
+        }
+      }
+    },
+    {
+      "id": "P5",
+      "name": "Наш дом Израиль без Либера",
+      "notes": "",
+      "color": "#ff7f0e",
+      "blockId": null,
+      "tieBreakOrder": 5,
+      "canJoinGovernment": true,
+      "voteShare": {
+        "numerator": "3",
+        "denominator": "50"
+      },
+      "composition": {
+        "secular": {
+          "numerator": "3",
+          "denominator": "4"
+        },
+        "G2": {
+          "numerator": "1",
+          "denominator": "10"
+        },
+        "religious": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "G4": {
+          "numerator": "1",
+          "denominator": "10"
+        },
+        "G5": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "haredi": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "other": {
+          "numerator": "1",
+          "denominator": "20"
+        }
+      }
+    },
+    {
+      "id": "P6",
+      "name": "Демократы и Левее",
+      "notes": "",
+      "color": "#8c564b",
+      "blockId": null,
+      "tieBreakOrder": 6,
+      "canJoinGovernment": true,
+      "voteShare": {
+        "numerator": "3",
+        "denominator": "25"
+      },
+      "composition": {
+        "secular": {
+          "numerator": "3",
+          "denominator": "5"
+        },
+        "G2": {
+          "numerator": "1",
+          "denominator": "5"
+        },
+        "religious": {
+          "numerator": "1",
+          "denominator": "20"
+        },
+        "G4": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "G5": {
+          "numerator": "1",
+          "denominator": "10"
+        },
+        "haredi": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "other": {
+          "numerator": "1",
+          "denominator": "20"
+        }
+      }
+    },
+    {
+      "id": "utj",
+      "name": "",
+      "notes": "",
+      "color": "#1E293B",
+      "blockId": null,
+      "tieBreakOrder": 7,
+      "canJoinGovernment": true,
+      "voteShare": {
+        "numerator": "1",
+        "denominator": "10"
+      },
+      "composition": {
+        "secular": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "G2": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "religious": {
+          "numerator": "1",
+          "denominator": "10"
+        },
+        "G4": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "G5": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "haredi": {
+          "numerator": "9",
+          "denominator": "10"
+        },
+        "other": {
+          "numerator": "0",
+          "denominator": "1"
+        }
+      }
+    },
+    {
+      "id": "P8",
+      "name": "Арабы ",
+      "notes": "",
+      "color": "#7f7f7f",
+      "blockId": null,
+      "tieBreakOrder": 8,
+      "canJoinGovernment": true,
+      "voteShare": {
+        "numerator": "7",
+        "denominator": "50"
+      },
+      "composition": {
+        "secular": {
+          "numerator": "1",
+          "denominator": "50"
+        },
+        "G2": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "religious": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "G4": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "G5": {
+          "numerator": "93",
+          "denominator": "100"
+        },
+        "haredi": {
+          "numerator": "0",
+          "denominator": "1"
+        },
+        "other": {
+          "numerator": "1",
+          "denominator": "20"
+        }
+      }
+    }
+  ],
+  "blocks": [],
+  "coalitionRules": {
+    "incompatiblePartyPairs": [],
+    "incompatibleBlockPairs": [],
+    "compatiblePartyOverrides": [],
+    "partyRefusals": [
+      [
+        "P1",
+        "P6"
+      ],
+      [
+        "P1",
+        "P8"
+      ],
+      [
+        "P2",
+        "shas"
+      ],
+      [
+        "P2",
+        "P8"
+      ],
+      [
+        "shas",
+        "P6"
+      ],
+      [
+        "P6",
+        "P1"
+      ],
+      [
+        "P6",
+        "P2"
+      ],
+      [
+        "P6",
+        "shas"
+      ],
+      [
+        "P6",
+        "utj"
+      ],
+      [
+        "utj",
+        "P2"
+      ],
+      [
+        "utj",
+        "P3"
+      ],
+      [
+        "utj",
+        "P5"
+      ],
+      [
+        "utj",
+        "P6"
+      ],
+      [
+        "utj",
+        "P8"
+      ],
+      [
+        "P8",
+        "P1"
+      ],
+      [
+        "P8",
+        "P2"
+      ],
+      [
+        "P8",
+        "shas"
+      ],
+      [
+        "P8",
+        "P5"
+      ],
+      [
+        "P8",
+        "P6"
+      ],
+      [
+        "P8",
+        "utj"
+      ]
+    ]
+  }
+}

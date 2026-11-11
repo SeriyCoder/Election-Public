@@ -1,0 +1,50 @@
+/**
+ * Independently transcribed vote counts and official seats from the IDI 2022
+ * results table. Order follows the published vote-count order.
+ */
+export const HISTORICAL_2022_FIXTURE = [
+  ['likud', 1115336, 32],
+  ['yesh-atid', 847435, 24],
+  ['religious-zionism', 516470, 14],
+  ['national-unity', 432482, 12],
+  ['shas', 392964, 11],
+  ['utj', 280194, 7],
+  ['yisrael-beiteinu', 213687, 6],
+  ['raam', 194047, 5],
+  ['hadash-taal', 178735, 5],
+  ['avoda', 175992, 4],
+  ['meretz', 150793, 0],
+  ['balad', 138617, 0],
+  ['jewish-home', 56775, 0],
+  ['economic-freedom', 15801, 0],
+  ['brave-for-you', 14694, 0],
+  ['new-economy', 13920, 0],
+  ['burning-young', 8800, 0],
+  ['pirates', 1728, 0],
+  ['environment-animal', 1618, 0],
+  ['ale-yarok', 1524, 0],
+  ['nativ', 1354, 0],
+  ['every-vote-counts', 1292, 0],
+  ['yesh-kivun', 1215, 0],
+  ['israel-free-democratic', 1157, 0],
+  ['seder-chadash', 1078, 0],
+  ['new-independents', 1020, 0],
+  ['social-leadership', 988, 0],
+  ['thirty-forty', 939, 0],
+  ['ani-veata', 746, 0],
+  ['shachar-social-power', 430, 0],
+  ['jewish-heart', 415, 0],
+  ['biblical-bloc', 411, 0],
+  ['human-dignity', 350, 0],
+  ['anachnu', 334, 0],
+  ['tzomet', 292, 0],
+  ['tsav-hashaa', 262, 0],
+  ['shma', 255, 0],
+  ['ichud-bnei-habrit', 234, 0],
+  ['kama', 205, 0],
+  ['koach-lehashpia', 153, 0],
+] as const;
+
+export const HAMILTON_2022_FIXTURE = [
+  31, 23, 14, 12, 11, 8, 6, 5, 5, 5,
+] as const;

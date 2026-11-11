@@ -1,0 +1,36 @@
+{
+  "name": "elections-simulator",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run --passWithNoTests",
+    "test:e2e": "npm run build:hosted && vite build && playwright test",
+    "build:hosted": "node scripts/buildHosted.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" vite.config.ts playwright.config.ts eslint.config.js package.json tsconfig.json .prettierrc.json --no-error-on-unmatched-pattern"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
+    "@preact/preset-vite": "^2.10.6",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
+    "preact-render-to-string": "^6.8.2",
+    "prettier": "^3.9.10",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vite": "^8.3.5",
+    "vite-plugin-singlefile": "^2.3.4",
+    "vitest": "^5.0.5"
+  },
+  "dependencies": {
+    "preact": "^11.1.0"
+  }
+}

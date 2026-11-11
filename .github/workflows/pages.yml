@@ -1,0 +1,85 @@
+name: Publish GitHub Pages
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-2022
+    permissions:
+      contents: read
+    env:
+      HOSTED_BASE_URL: https://seriycoder.github.io/Election-Public/
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify Microsoft Edge is installed
+        shell: pwsh
+        run: |
+          $edgePaths = @(
+            (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'),
+            (Join-Path $env:ProgramFiles 'Microsoft\Edge\Application\msedge.exe')
+          )
+          $edge = $edgePaths | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (-not $edge) { throw 'Microsoft Edge is required to capture preview.png.' }
+          $version = (Get-Item -LiteralPath $edge).VersionInfo.ProductVersion
+          if (-not $version) { throw 'Microsoft Edge executable has no version information.' }
+          Write-Output "Microsoft Edge $version; browser launch is verified by the hosted build."
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit and build tests
+        run: npm test -- --no-file-parallelism
+
+      - name: Check types
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build offline and hosted browser targets and run browser tests
+        run: npm run test:e2e -- --workers=2
+
+      - name: Prepare final Pages artifact
+        run: npm run build:hosted
+
+      - name: Configure Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
+        with:
+          path: dist-hosted/
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e
