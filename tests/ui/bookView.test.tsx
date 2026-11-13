@@ -6,12 +6,14 @@ import { formatDecimal, formatInteger } from '../../src/i18n/format';
 import { App } from '../../src/ui/App';
 import {
   bookPages,
+  bookScreens,
   editPage,
   EMPTY_BOOK,
   EMPTY_DRAFT,
   KNESSET_FACTS,
   pageSpec,
   partCount,
+  screenOf,
   type PageKey,
   type Section,
 } from '../../src/ui/book';
@@ -51,15 +53,40 @@ function render(store: Store): string {
   return renderToString(<App store={store} />);
 }
 
-/** Turns pages with Next until the given page is on screen. */
+/** Whether the page is on the screen shown now (M7-19). */
+function onScreen(store: Store, page: PageKey): boolean {
+  const { draft, page: at } = store.getState().book;
+  return screenOf(draft, at).includes(page);
+}
+
+/** Turns screens with Next until the given page is on screen (M7-19). */
 function turnTo(store: Store, page: PageKey): void {
   let guard = 0;
-  while (store.getState().book.page !== page) {
+  while (!onScreen(store, page)) {
     if (guard > 100 || !store.bookNext()) {
       throw new Error(`stuck at ${store.getState().book.page}`);
     }
     guard += 1;
   }
+}
+
+/** The block of one page on the rendered screen, nested sections included (M7-19). */
+function pageBlock(html: string, page: string): string {
+  const open = new RegExp(`<section\\b[^>]*data-book-page="${page}"[^>]*>`);
+  const start = open.exec(html)?.index;
+  if (start === undefined) {
+    return '';
+  }
+  const tags = /<(\/?)section\b[^>]*>/g;
+  tags.lastIndex = start;
+  let depth = 0;
+  for (let tag = tags.exec(html); tag !== null; tag = tags.exec(html)) {
+    depth += tag[1] === '/' ? -1 : 1;
+    if (depth === 0) {
+      return html.slice(start, tag.index + tag[0].length);
+    }
+  }
+  return html.slice(start);
 }
 
 /** The text of the first child of every element carrying the attribute. */
@@ -104,7 +131,7 @@ function branched(language: Locale): Store {
   return groupBookStore(language);
 }
 
-/** Every page of the book with all branches open, each in its own store. */
+/** Every page of the book with all branches open, each in its own store on the page's screen. */
 function everyPage(language: Locale = 'ru'): { store: Store; page: PageKey }[] {
   const pages = bookPages(branched(language).getState().book.draft);
   return pages.map((page) => {
@@ -140,32 +167,43 @@ describe('questionnaire screen', () => {
     expect(html).toContain('data-book');
   });
 
-  it('shows one question, an explanation, a picture slot and the navigation on every page', () => {
-    const all = everyPage();
-    expect(all.map(({ page }) => page)).toEqual(
-      bookPages(groupBookStore().getState().book.draft),
-    );
-    for (const { store, page } of all) {
-      expect(store.getState().book.page).toBe(page);
+  it('shows one question and explanation per page, a picture only on a lone page and the navigation on every screen (M7-19)', () => {
+    const { draft } = groupBookStore().getState().book;
+    const screens = bookScreens(draft);
+    expect(screens.flat()).toEqual(bookPages(draft));
+    for (const screen of screens) {
+      const first = screen[0]!;
+      const store = groupBookStore();
+      store.bookGoTo(first);
+      expect(store.getState().book.page).toBe(first);
       const html = render(store);
-      expect(html, page).toContain(`data-page="${page}"`);
-      expect(count(html, /data-question/), page).toBe(1);
-      expect(count(html, /data-explain/), page).toBe(1);
-      if (COMPACT_PAGES.includes(page)) {
-        expect(html, page).toContain('data-compact');
-      } else {
-        expect(html, page).toMatch(
-          /data-(motif="[a-z-]+"|pie)[^>]*aria-hidden="true"/,
-        );
+      expect(html, first).toContain(`data-page="${first}"`);
+      expect(html, first).toContain(`data-screen="${screen.length}"`);
+      expect(count(html, /data-question/), first).toBe(screen.length);
+      expect(count(html, /data-explain/), first).toBe(screen.length);
+      for (const page of screen) {
+        const block = pageBlock(html, page);
+        expect(count(block, /data-question/), page).toBe(1);
+        expect(count(block, /data-explain/), page).toBe(1);
       }
-      expect(action(html, 'book-back'), page).toBe('Назад');
-      expect(action(html, 'book-skip'), page).toBe('Пропустить анкету');
-      const { draft, part } = store.getState().book;
-      if (page === 'review' && part === partCount(draft, page) - 1) {
+      const compact = screen.some((page) => COMPACT_PAGES.includes(page));
+      expect(html.includes('data-compact'), first).toBe(compact);
+      if (screen.length === 1 && !compact) {
+        expect(html, first).toMatch(
+          /data-motif="[a-z-]+"[^>]*aria-hidden="true"/,
+        );
+      } else {
+        expect(html, first).not.toContain('data-figure');
+        expect(html, first).not.toContain('data-motif=');
+      }
+      expect(action(html, 'book-back'), first).toBe('Назад');
+      expect(action(html, 'book-skip'), first).toBe('Пропустить анкету');
+      const { part } = store.getState().book;
+      if (first === 'review' && part === partCount(draft, first) - 1) {
         expect(action(html, 'book-build')).toBe('Построить мою симуляцию');
         expect(html).not.toContain('data-action="book-next"');
       } else {
-        expect(action(html, 'book-next'), page).toBe('Далее');
+        expect(action(html, 'book-next'), first).toBe('Далее');
       }
     }
   });
@@ -208,19 +246,24 @@ describe('questionnaire screen', () => {
     const store = groupBookStore();
     expect(texts(render(store), 'data-chapter-label')).toEqual(['Вступление']);
     turnTo(store, 'turnout');
-    let html = render(store);
+    const html = render(store);
     expect(html).toContain('data-chapter="3"');
     expect(texts(html, 'data-chapter-label')).toEqual(['Глава 3 из 8 · Явка']);
-    expect(fields(html)).toEqual([0, 1, 2, 3]);
-    turnTo(store, 'compose');
-    html = render(store);
-    expect(html).toContain('data-chapter="4"');
-    expect(texts(html, 'data-chapter-label')).toEqual([
-      'Глава 4 из 8 · Избиратели партий',
-    ]);
-    expect(texts(html, 'data-step')).toEqual([]);
-    expect(texts(html, 'data-question')).toEqual([
+    expect(fields(pageBlock(html, 'turnout'))).toEqual([0, 1, 2, 3]);
+    // M7-19: compose shares the turnout screen, which takes its chapter.
+    expect(screenOf(store.getState().book.draft, 'compose')).toContain(
+      'turnout',
+    );
+    const compose = pageBlock(html, 'compose');
+    expect(texts(compose, 'data-step')).toEqual([]);
+    expect(texts(compose, 'data-question')).toEqual([
       'Из кого состоят избиратели партий?',
+    ]);
+    turnTo(store, 'votes.check');
+    const check = render(store);
+    expect(check).toContain('data-chapter="4"');
+    expect(texts(check, 'data-chapter-label')).toEqual([
+      'Глава 4 из 8 · Избиратели партий',
     ]);
   });
 
@@ -235,11 +278,11 @@ describe('questionnaire answers', () => {
   it('labels a suggested value as an example and drops the label once typed', () => {
     const store = groupBookStore();
     turnTo(store, 'parties.count');
-    let html = render(store);
+    let html = pageBlock(render(store), 'parties.count');
     expect(texts(html, 'data-suggested')).toEqual(['Пример']);
     expect(html).toMatch(/<input[^>]*data-book-field[^>]*value="4"/);
     store.answerBook(0, '5');
-    html = render(store);
+    html = pageBlock(render(store), 'parties.count');
     expect(html).not.toContain('data-suggested');
     expect(html).toMatch(/<input[^>]*data-book-field[^>]*value="5"/);
   });
@@ -277,37 +320,36 @@ describe('questionnaire answers', () => {
   it('keeps the remainder to 100% in view on party votes and compositions', () => {
     const store = groupBookStore();
     turnTo(store, 'votes.shares');
-    expect(texts(render(store), 'data-remainder')).toEqual(['Сумма: 100%']);
-    store.answerBook(0, '15,5');
-    expect(texts(render(store), 'data-remainder')).toEqual([
-      'Осталось распределить: 9,5%',
-    ]);
-    store.answerBook(0, '45');
-    expect(texts(render(store), 'data-remainder')).toEqual([
-      'Больше 100% на 20%',
-    ]);
-    store.answerBook(0, '25');
-    turnTo(store, 'compose');
-    expect(texts(render(store), 'data-remainder')).toEqual(['Сумма: 100%']);
+    const remainder = (page: PageKey) =>
+      texts(pageBlock(render(store), page), 'data-remainder');
+    expect(remainder('votes.shares')).toEqual(['Сумма: 100%']);
+    store.answerBook(0, '15,5', 'votes.shares');
+    expect(remainder('votes.shares')).toEqual(['Осталось распределить: 9,5%']);
+    store.answerBook(0, '45', 'votes.shares');
+    expect(remainder('votes.shares')).toEqual(['Больше 100% на 20%']);
+    store.answerBook(0, '25', 'votes.shares');
+    // M7-19: the compositions share the screen of the party votes.
+    expect(onScreen(store, 'compose')).toBe(true);
+    expect(remainder('compose')).toEqual(['Сумма: 100%']);
   });
 
   it('names the six lists and the example groups from the catalog', () => {
     const store = groupBookStore();
     turnTo(store, 'parties.count');
     store.answerBook(0, '6');
-    store.bookNext();
-    store.answerBook(0, 'example');
+    store.answerBook(0, 'example', 'parties.naming');
     turnTo(store, 'people.set');
-    store.answerBook(0, 'example');
+    store.answerBook(0, 'example', 'people.set');
     turnTo(store, 'compose');
-    const html = render(store);
+    const html = pageBlock(render(store), 'compose');
     expect(texts(html, 'data-question')).toEqual([
       'Из кого состоят избиратели партий?',
     ]);
     expect(html).toMatch(/<option[^>]*value="likud"[^>]*>Ликуд/);
     expect(html).toMatch(/<option[^>]*value="yesh-atid"[^>]*>Еш Атид/);
     expect(html).toContain('Светские евреи');
-    expect(html).toMatch(/<input[^>]*data-book-field="0"[^>]*value="32,8"/);
+    // M7-19: haredi turnout 85 moves the suggested composition (was 32,8).
+    expect(html).toMatch(/<input[^>]*data-book-field="0"[^>]*value="32,5"/);
     expect(store.bookNext()).toBe(true);
     expect(store.getState().book.page).toBe('votes.check');
   });
@@ -315,7 +357,7 @@ describe('questionnaire answers', () => {
   it('shows the default name as the placeholder of an own field and the list name in a picked one', () => {
     const own = groupBookStore();
     turnTo(own, 'parties.naming');
-    own.answerBook(0, 'own');
+    own.answerBook(0, 'own', 'parties.naming');
     turnTo(own, 'parties.names');
     let html = render(own);
     expect(inputTag(html, 1)).toContain('placeholder="Партия 1"');
@@ -335,7 +377,7 @@ describe('questionnaire answers', () => {
   it('asks about cooperation with two independent visual ends per other party', () => {
     const store = groupBookStore();
     turnTo(store, 'coalitions');
-    const html = render(store);
+    const html = pageBlock(render(store), 'coalitions');
     expect(texts(html, 'data-question')).toEqual(['Кто готов сотрудничать?']);
     expect(count(html, /data-refusal=/)).toBe(6);
     expect(html).toContain('aria-pressed="false"');
@@ -344,7 +386,7 @@ describe('questionnaire answers', () => {
   it('asks before the six-list set changes the party count', () => {
     const store = groupBookStore();
     turnTo(store, 'parties.naming');
-    store.answerBook(0, 'example');
+    store.answerBook(0, 'example', 'parties.naming');
     const html = render(store);
     expect(html).toMatch(
       /<div[^>]*role="alertdialog"[^>]*data-book-confirm="example-count"/,
@@ -452,20 +494,19 @@ describe('questionnaire languages', () => {
     expect(render(store)).not.toMatch(/\bbook\.[a-zA-Z]/);
     store.closeFact();
     turnTo(store, 'parties.naming');
-    store.answerBook(0, 'example');
+    store.answerBook(0, 'example', 'parties.naming');
     expect(render(store)).not.toMatch(/\bbook\.[a-zA-Z]/);
   });
 });
 
-/** A store on the given page after choosing the six-list example. */
+/** A store on the screen of the given page after choosing the six-list example. */
 function sixStore(page: PageKey): Store {
   const store = groupBookStore();
   turnTo(store, 'parties.count');
   store.answerBook(0, '6');
-  store.bookNext();
-  store.answerBook(0, 'example');
+  store.answerBook(0, 'example', 'parties.naming');
   turnTo(store, 'people.set');
-  store.answerBook(0, 'example');
+  store.answerBook(0, 'example', 'people.set');
   turnTo(store, page.replace(/^(turnout|growth|coalitions)\.\d+$/, '$1'));
   return store;
 }
@@ -605,20 +646,23 @@ const OWN_GROUP_COLORS = [0, 1, 2, 3].map((index) =>
 
 describe('party voters pages', () => {
   it('asks the party votes with a stacked bar in the list colours', () => {
-    const html = render(sixStore('votes.shares'));
+    const screen = render(sixStore('votes.shares'));
+    const html = pageBlock(screen, 'votes.shares');
     expect(texts(html, 'data-question')).toEqual([
       'Сколько голосов получает каждая партия?',
     ]);
-    expect(html).toContain('Глава 4 из 8 · Избиратели партий');
+    // M7-19: the shares share the turnout screen, whose head names chapter 3.
+    expect(screen).toContain('Глава 3 из 8 · Явка');
     const colors = EXAMPLE_LISTS.map((id) => catalogListColor(id) ?? '');
     expect(html).not.toContain('data-pie');
+    // M7-19: the example shares follow haredi turnout 85 (were 25.61 ? 86.95).
     expect(bars(html, 'data-shares-bar')).toEqual([
-      [colors[0], '0', '25.61'],
-      [colors[1], '25.61', '50.38'],
-      [colors[2], '50.38', '60.07'],
-      [colors[3], '60.07', '72.02'],
-      [colors[4], '72.02', '86.95'],
-      [colors[5], '86.95', '100'],
+      [colors[0], '0', '25.25'],
+      [colors[1], '25.25', '49.56'],
+      [colors[2], '49.56', '59.03'],
+      [colors[3], '59.03', '71.05'],
+      [colors[4], '71.05', '87.25'],
+      [colors[5], '87.25', '100'],
     ]);
     expect(keys(html)).toEqual([...EXAMPLE_LISTS]);
   });
@@ -627,10 +671,9 @@ describe('party voters pages', () => {
     const store = groupBookStore();
     turnTo(store, 'parties.count');
     store.answerBook(0, '10');
-    store.bookNext();
-    store.answerBook(0, 'own');
+    store.answerBook(0, 'own', 'parties.naming');
     turnTo(store, 'votes.shares');
-    const html = render(store);
+    const html = pageBlock(render(store), 'votes.shares');
     expect(bars(html, 'data-shares-bar').map((segment) => segment[0])).toEqual(
       PALETTE.slice(0, 10),
     );
@@ -640,7 +683,7 @@ describe('party voters pages', () => {
   });
 
   it('colours the suggested lists by the catalog', () => {
-    const html = render(tenStore('votes.shares'));
+    const html = pageBlock(render(tenStore('votes.shares')), 'votes.shares');
     expect(bars(html, 'data-shares-bar').map((segment) => segment[0])).toEqual(
       CATALOG_LISTS.map((list) => catalogListColor(list.id) ?? ''),
     );
@@ -648,14 +691,15 @@ describe('party voters pages', () => {
   });
 
   it('draws a party composition in the group colours', () => {
-    const html = render(sixStore('compose'));
+    const html = pageBlock(render(sixStore('compose')), 'compose');
+    // M7-19: the example composition follows haredi turnout 85.
     expect(bars(html, 'data-compose-bar')).toEqual([
-      [GROUP_COLORS[0], '0', '32.8'],
-      [GROUP_COLORS[1], '32.8', '75.9'],
-      [GROUP_COLORS[2], '75.9', '82.1'],
-      [GROUP_COLORS[3], '82.1', '82.1'],
-      [GROUP_COLORS[4], '82.1', '88.7'],
-      [GROUP_COLORS[5], '88.7', '93'],
+      [GROUP_COLORS[0], '0', '32.5'],
+      [GROUP_COLORS[1], '32.5', '75.1'],
+      [GROUP_COLORS[2], '75.1', '81.2'],
+      [GROUP_COLORS[3], '81.2', '81.2'],
+      [GROUP_COLORS[4], '81.2', '87.8'],
+      [GROUP_COLORS[5], '87.8', '93'],
       [GROUP_COLORS[6], '93', '100'],
     ]);
     expect(keys(html)).toEqual(CATALOG_GROUPS.map((group) => group.id));
@@ -664,17 +708,18 @@ describe('party voters pages', () => {
   it('follows the typed values, leaving the rest of the bar empty and scaling a sum over 100%', () => {
     const store = groupBookStore();
     turnTo(store, 'compose');
-    expect(keys(render(store))).toEqual(['G1', 'G2', 'G3', 'G4']);
-    store.answerBook(0, '10');
-    let pie = bars(render(store), 'data-compose-bar');
+    const compose = () => pageBlock(render(store), 'compose');
+    expect(keys(compose())).toEqual(['G1', 'G2', 'G3', 'G4']);
+    store.answerBook(0, '10', 'compose');
+    let pie = bars(compose(), 'data-compose-bar');
     expect(pie).toEqual([
       [OWN_GROUP_COLORS[0], '0', '10'],
       [OWN_GROUP_COLORS[1], '10', '35'],
       [OWN_GROUP_COLORS[2], '35', '60'],
       [OWN_GROUP_COLORS[3], '60', '85'],
     ]);
-    store.answerBook(0, '75');
-    pie = bars(render(store), 'data-compose-bar');
+    store.answerBook(0, '75', 'compose');
+    pie = bars(compose(), 'data-compose-bar');
     expect(pie).toEqual([
       [OWN_GROUP_COLORS[0], '0', '50'],
       [OWN_GROUP_COLORS[1], '50', '66.67'],
@@ -685,7 +730,8 @@ describe('party voters pages', () => {
 
   it('shows the derived group shares beside the 2022 statistics', () => {
     const store = sixStore('votes.check');
-    const html = render(store);
+    const screen = render(store);
+    const html = pageBlock(screen, 'votes.check');
     expect(texts(html, 'data-question')).toEqual([
       'Какой получилась структура избирателей?',
     ]);
@@ -706,19 +752,21 @@ describe('party voters pages', () => {
     expect(texts(html, 'data-check-stat')).toEqual(CBS_STATS);
     expect(html).toContain('Оценка населения 2022');
     expect(keys(html)).toEqual(CATALOG_GROUPS.map((group) => group.id));
+    // M7-19: the pie shows valid votes; haredi turnout 85 leaves the shares
+    // of the population above but moves the votes away from them.
     expect(slices(html)).toEqual([
-      [GROUP_COLORS[0], '0', '33.6'],
-      [GROUP_COLORS[1], '33.6', '58.1'],
-      [GROUP_COLORS[2], '58.1', '66'],
-      [GROUP_COLORS[3], '66', '66'],
-      [GROUP_COLORS[4], '66', '83'],
-      [GROUP_COLORS[5], '83', '94'],
-      [GROUP_COLORS[6], '94', '100'],
+      [GROUP_COLORS[0], '0', '32.8'],
+      [GROUP_COLORS[1], '32.8', '56.7'],
+      [GROUP_COLORS[2], '56.7', '64.4'],
+      [GROUP_COLORS[3], '64.4', '64.4'],
+      [GROUP_COLORS[4], '64.4', '81'],
+      [GROUP_COLORS[5], '81', '94.1'],
+      [GROUP_COLORS[6], '94.1', '100'],
     ]);
     expect(html).not.toMatch(
       /data-book-field|data-book-pick|data-suggested|data-remainder/,
     );
-    expect(action(html, 'book-next')).toBe('Далее');
+    expect(action(screen, 'book-next')).toBe('Далее');
   });
 
   it('moves the derived shares with the turnout', () => {
@@ -726,9 +774,10 @@ describe('party voters pages', () => {
     store.answerBook(4, '50');
     turnTo(store, 'votes.check');
     const html = render(store);
+    // M7-19: haredi turnout 85 by default (were 31,4% and 23%).
     expect(texts(html, 'data-check-share')).toEqual([
-      '31,4%',
-      '23%',
+      '31,5%',
+      '22,9%',
       '7,4%',
       '0%',
       '22,3%',
@@ -754,7 +803,7 @@ describe('party voters pages', () => {
     store.bookGoTo('compose');
     for (let party = 0; party < 4; party += 1) {
       ['50', '25', '25', '0'].forEach((text, index) =>
-        store.answerBook(party * 4 + index, text),
+        store.answerBook(party * 4 + index, text, 'compose'),
       );
     }
     expect(store.bookNext()).toBe(true);
@@ -785,14 +834,17 @@ function tenStore(page: PageKey): Store {
 describe('questionnaire parts', () => {
   it('shows all ten vote shares on one screen without a part line or range (M7-15)', () => {
     const store = tenStore('votes.shares');
-    const html = render(store);
-    expect(html).toMatch(/data-book[^>]*data-part="0"/);
+    const screen = render(store);
+    const html = pageBlock(screen, 'votes.shares');
+    expect(screen).toMatch(/data-book[^>]*data-part="0"/);
     expect(textFields(html)).toEqual(Array.from({ length: 10 }, (_, n) => n));
     expect(html).not.toContain('data-part-step');
     expect(html).not.toContain('data-rows-range');
     expect(html).not.toContain('data-rows-more');
+    // M7-19: the compositions share the screen; Next turns to the check.
+    expect(onScreen(store, 'compose')).toBe(true);
     expect(store.bookNext()).toBe(true);
-    expect(store.getState().book.page).toBe('compose');
+    expect(store.getState().book.page).toBe('votes.check');
   });
 
   it('shows the six-list pages of party voters whole', () => {
@@ -802,9 +854,9 @@ describe('questionnaire parts', () => {
       expect(html, page).not.toContain('data-part-step');
       expect(html, page).not.toContain('data-rows-range');
     }
-    expect(textFields(render(sixStore('compose')))).toEqual([
-      0, 1, 2, 3, 4, 5, 6,
-    ]);
+    expect(
+      textFields(pageBlock(render(sixStore('compose')), 'compose')),
+    ).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 
   it('shows no part line on a page with one part', () => {
@@ -812,29 +864,32 @@ describe('questionnaire parts', () => {
     turnTo(store, 'compose');
     const html = render(store);
     expect(html).toMatch(/data-book[^>]*data-part="0"/);
-    expect(textFields(html)).toEqual([0, 1, 2, 3]);
+    expect(textFields(pageBlock(html, 'compose'))).toEqual([0, 1, 2, 3]);
     expect(html).not.toContain('data-part-step');
     expect(html).not.toContain('data-rows-range');
   });
 
   it('keeps the remainder of the whole page and stops on the sum (M7-15)', () => {
     const store = tenStore('votes.shares');
-    store.answerBook(4, '5');
-    expect(texts(render(store), 'data-remainder')).toEqual([
-      'Осталось распределить: 5%',
-    ]);
+    store.answerBook(4, '5', 'votes.shares');
+    expect(
+      texts(pageBlock(render(store), 'votes.shares'), 'data-remainder'),
+    ).toEqual(['Осталось распределить: 5%']);
     expect(store.bookNext()).toBe(false);
     const html = render(store);
     expect(html).toMatch(/data-book[^>]*data-part="0"/);
-    expect(html).toMatch(/<p[^>]*data-book-error[^>]*role="alert"/);
+    expect(pageBlock(html, 'votes.shares')).toMatch(
+      /<p[^>]*data-book-error[^>]*role="alert"/,
+    );
   });
 
   it('shows the error on the part that holds the wrong value', () => {
     const store = tenStore('votes.shares');
-    store.answerBook(0, 'abc');
+    store.answerBook(0, 'abc', 'votes.shares');
     expect(store.bookNext()).toBe(false);
-    const html = render(store);
-    expect(html).toMatch(/data-book[^>]*data-part="0"/);
+    const screen = render(store);
+    const html = pageBlock(screen, 'votes.shares');
+    expect(screen).toMatch(/data-book[^>]*data-part="0"/);
     expect(html).toMatch(/<p[^>]*data-book-error[^>]*role="alert"/);
     expect(html).toMatch(
       /<input[^>]*data-book-field="0"[^>]*aria-invalid="true"/,
@@ -856,7 +911,7 @@ describe('questionnaire parts', () => {
     turnTo(store, 'parties.count');
     store.answerBook(0, '10');
     turnTo(store, 'coalitions');
-    const html = render(store);
+    const html = pageBlock(render(store), 'coalitions');
     expect(count(html, /<option /)).toBe(10);
     expect(count(html, /data-refusal=/)).toBe(18);
     expect(html).not.toContain('1 / 3');
@@ -867,7 +922,7 @@ describe('questionnaire parts', () => {
 
   it("leaves the other party's page alone when one party refuses it", () => {
     const store = sixStore('coalitions');
-    store.answerBook(3, 'no');
+    store.answerBook(3, 'no', 'coalitions');
     expect(render(store)).toMatch(
       /data-refusal="likud:avoda" aria-pressed="true"/,
     );
@@ -883,7 +938,7 @@ describe('questionnaire parts', () => {
     expect(render(store)).toContain(explain);
   });
 
-  it('shows the review in parts and offers the build on the last', () => {
+  it('shows the whole review on one screen with a graphic and an edit button per chapter, and offers the build (M7-19)', () => {
     const store = groupBookStore();
     turnTo(store, 'parties.count');
     store.answerBook(0, '10');
@@ -895,43 +950,72 @@ describe('questionnaire parts', () => {
       );
     }
     turnTo(store, 'review');
+    expect(partCount(store.getState().book.draft, 'review')).toBe(1);
     const parts = everyPart(store);
-    expect(parts.length).toBeGreaterThan(1);
-    parts.forEach((html, index) => {
-      const last = index === parts.length - 1;
-      expect(texts(html, 'data-part-step')).toEqual([
-        `Часть ${index + 1} из ${parts.length}`,
-      ]);
-      expect(html.includes('data-action="book-build"'), `${index}`).toBe(last);
-      expect(html.includes('data-action="book-next"'), `${index}`).toBe(!last);
-      expect(count(html, /data-review="/)).toBeGreaterThan(0);
-    });
+    expect(parts).toHaveLength(1);
+    const html = parts[0]!;
+    expect(html).toContain('data-screen="1"');
+    expect(html).not.toContain('data-part-step');
+    expect(action(html, 'book-build')).toBe('Построить мою симуляцию');
+    expect(html).not.toContain('data-action="book-next"');
+    for (const chapter of [1, 2, 3, 4, 5, 6, 7]) {
+      const section = new RegExp(
+        `<section\\b[^>]*data-review="${chapter}"[^>]*>([\\s\\S]*?)</section>`,
+      ).exec(html)?.[1];
+      expect(section, `chapter ${chapter}`).toBeDefined();
+      expect(
+        count(html, new RegExp(`data-review="${chapter}"`)),
+        `chapter ${chapter}`,
+      ).toBe(1);
+      expect(count(section!, /data-action="book-edit"/), `${chapter}`).toBe(1);
+      // The edit button closes the chapter, after its lines and graphic.
+      expect(section!.trimEnd(), `${chapter}`).toMatch(
+        /data-action="book-edit"[^>]*>[^<]*<\/button>$/,
+      );
+      expect(section!.indexOf('book__review-line'), `${chapter}`).toBeLessThan(
+        section!.indexOf('data-action="book-edit"'),
+      );
+      expect(section!.indexOf('book__review-line'), `${chapter}`).not.toBe(-1);
+      if (chapter <= 2) {
+        expect(section, `${chapter}`).toContain('data-review-keys');
+      }
+      if (chapter === 4) {
+        expect(section, `${chapter}`).toContain('data-review-bar');
+      }
+    }
   });
 });
 
 describe('questionnaire drawings', () => {
-  it('draws a decorative picture on every page, a pie on the check page', () => {
-    for (const { store, page } of everyPage()) {
+  it('draws a decorative picture on a lone page only, the check pie inside its block (M7-19)', () => {
+    const { draft } = groupBookStore().getState().book;
+    for (const screen of bookScreens(draft)) {
+      const first = screen[0]!;
+      const store = groupBookStore();
+      store.bookGoTo(first);
       const html = render(store);
-      const { section } = pageSpec(store.getState().book.draft, page);
-      if (COMPACT_PAGES.includes(page)) {
-        expect(html).toContain('data-compact');
-        expect(html).not.toContain('data-motif=');
+      for (const page of screen) {
+        const { section } = pageSpec(draft, page);
+        if (PIE_SECTIONS.includes(section)) {
+          expect(pageBlock(html, page), page).toMatch(
+            /<div[^>]*data-pie[^>]*aria-hidden="true"/,
+          );
+        }
+      }
+      const compact = screen.some((page) => COMPACT_PAGES.includes(page));
+      if (screen.length > 1 || compact) {
+        expect(html, first).not.toContain('data-figure');
+        expect(html, first).not.toContain('data-motif=');
         continue;
       }
-      if (PIE_SECTIONS.includes(section)) {
-        expect(html, page).not.toContain('data-motif=');
-        expect(html, page).toMatch(/<div[^>]*data-pie[^>]*aria-hidden="true"/);
-        continue;
-      }
-      expect(html, page).not.toContain('data-pie');
+      expect(html, first).not.toContain('data-pie');
       const motif =
         /<div[^>]*data-motif="([a-z-]+)"[^>]*>([\s\S]*?)<\/div>/.exec(html);
-      expect(motif, page).not.toBeNull();
-      expect(motif![1]).toBe(pageSpec(store.getState().book.draft, page).motif);
-      expect(motif![2], page).toMatch(/^<svg\b/);
-      expect(motif![2], page).toMatch(/<svg[^>]*aria-hidden="true"/);
-      expect(motif![2], page).toMatch(/<svg[^>]*focusable="false"/);
+      expect(motif, first).not.toBeNull();
+      expect(motif![1]).toBe(pageSpec(draft, first).motif);
+      expect(motif![2], first).toMatch(/^<svg\b/);
+      expect(motif![2], first).toMatch(/<svg[^>]*aria-hidden="true"/);
+      expect(motif![2], first).toMatch(/<svg[^>]*focusable="false"/);
     }
   });
 
@@ -955,33 +1039,34 @@ describe('questionnaire drawings', () => {
     expect(html).toContain('data-side="one"');
   });
 
-  it('captions the example drawings with fixed numbers marked as an example', () => {
-    for (const { store, page } of everyPage()) {
+  it('captions only a drawn picture with fixed numbers marked as an example (M7-19)', () => {
+    const { draft } = groupBookStore().getState().book;
+    for (const screen of bookScreens(draft)) {
+      const first = screen[0]!;
+      const store = groupBookStore();
+      store.bookGoTo(first);
       const html = render(store);
-      const { section } = pageSpec(store.getState().book.draft, page);
-      const expected =
-        page === 'turnout' || page === 'growth' ? undefined : CAPTIONS[section];
       const captions = texts(html, 'data-motif-caption');
-      if (section === 'votes.check') {
-        expect(captions).toEqual([
-          'Действительные голоса; серый цвет — неизвестный состав.',
-        ]);
+      if (!html.includes('data-figure')) {
+        expect(captions, first).toEqual([]);
         continue;
       }
+      const expected = CAPTIONS[pageSpec(draft, first).section];
       if (expected === undefined) {
-        expect(captions, page).toEqual([]);
+        expect(captions, first).toEqual([]);
         continue;
       }
-      expect(captions, page).toHaveLength(1);
-      expect(captions[0], page).toMatch(/^Пример: /);
+      expect(captions, first).toHaveLength(1);
+      expect(captions[0], first).toMatch(/^Пример: /);
       for (const pattern of expected) {
-        expect(captions[0], page).toMatch(pattern);
+        expect(captions[0], first).toMatch(pattern);
       }
     }
   });
 
   it('draws the same picture and caption whatever the answers', () => {
     const cases: [PageKey, number, string][] = [
+      ['parties.names', 1, 'Мой список'],
       ['parties.count', 0, '10'],
       ['rules.seats', 0, '99'],
       ['rules.threshold', 0, '10'],
@@ -990,8 +1075,11 @@ describe('questionnaire drawings', () => {
       const store = groupBookStore();
       turnTo(store, page);
       const before = figure(render(store));
-      expect(before, page).not.toBe('');
-      store.answerBook(field, text);
+      // M7-19: only a lone page draws a picture.
+      expect(before === '', page).toBe(
+        screenOf(store.getState().book.draft, page).length > 1,
+      );
+      store.answerBook(field, text, page);
       expect(figure(render(store)), page).toBe(before);
     }
   });
@@ -1002,11 +1090,11 @@ describe('questionnaire dialog', () => {
     const store = groupBookStore();
     turnTo(store, 'parties.naming');
     expect(render(store)).not.toMatch(/\binert\b/);
-    store.answerBook(0, 'example');
+    store.answerBook(0, 'example', 'parties.naming');
     const html = render(store);
     expect(html).toMatch(/<div[^>]*role="alertdialog"[^>]*aria-modal="true"/);
     expect(html).toMatch(/<header\b[^>]*class="book__head"[^>]*\binert\b/);
-    expect(html).toMatch(/<div\b[^>]*class="book__body"[^>]*\binert\b/);
+    expect(html).toMatch(/<div\b[^>]*class="book__body[^"]*"[^>]*\binert\b/);
     expect(html).toMatch(/<nav\b[^>]*class="book__nav"[^>]*\binert\b/);
     expect(html).not.toMatch(/<div[^>]*role="alertdialog"[^>]*\binert\b/);
     store.cancelBook();
@@ -1036,8 +1124,20 @@ describe('questionnaire part and caption languages', () => {
         html = render(store);
         if (page === 'growth')
           expect(html).toContain(translator(locale)('book.growth.visual'));
-        else expect(texts(html, 'data-motif-caption'), page).toHaveLength(1);
+        // M7-19: the threshold shares a screen, which draws no picture.
+        else expect(texts(html, 'data-motif-caption'), page).toEqual([]);
         expect(html, page).not.toMatch(/\bbook\.[a-zA-Z]/);
+      }
+      for (const caption of [
+        'book.caption.turnout',
+        'book.caption.voterMix',
+        'book.caption.growth',
+        'book.caption.turnoutChange',
+        'book.caption.threshold',
+      ] as const) {
+        expect(translator(locale)(caption), caption).not.toMatch(
+          /\bbook\.[a-zA-Z]/,
+        );
       }
     },
   );
@@ -1095,11 +1195,11 @@ describe('example disclosure', () => {
     review: 'review',
   };
 
-  /** A fresh book walked to the page with every branch open; the page itself is unconfirmed. */
+  /** A fresh book walked to the screen of the page with every branch open; the screen itself is unconfirmed. */
   function reached(page: PageKey): Store {
     const store = groupBookStore();
     let guard = 0;
-    while (store.getState().book.page !== page) {
+    while (!onScreen(store, page)) {
       const at = store.getState().book.page;
       if (at === 'growth.ask' || at === 'turnoutChange.ask') {
         store.answerBook(0, 'yes');
@@ -1116,15 +1216,18 @@ describe('example disclosure', () => {
 
   it('opens a sentence on what the example means and how to change it', () => {
     const seen = new Set<string>();
-    const stores = everyPage().map(({ page }) => reached(page));
+    const stores = everyPage().map(({ page }) => ({
+      store: reached(page),
+      page,
+    }));
     const review = groupBookStore();
     turnTo(review, 'parties.count');
     review.answerBook(0, '5');
     review.bookGoTo('review');
-    stores.push(review);
-    for (const store of stores) {
-      const { page, draft } = store.getState().book;
-      const html = render(store);
+    stores.push({ store: review, page: 'review' });
+    for (const { store, page } of stores) {
+      const { draft } = store.getState().book;
+      const html = pageBlock(render(store), page);
       if (!html.includes('data-suggested')) {
         continue;
       }
@@ -1214,7 +1317,7 @@ describe('names page', () => {
   it('offers the seven Basic groups for own group names', () => {
     const store = groupBookStore();
     turnTo(store, 'people.names');
-    const list = options(pickList(render(store), 0));
+    const list = options(pickList(pageBlock(render(store), 'people.names'), 0));
     expect(list.map((option) => option.value)).toEqual([
       '',
       ...CATALOG_GROUPS.map((entry) => entry.id),
@@ -1231,7 +1334,7 @@ describe('names page', () => {
 describe('ready values', () => {
   it('puts a list beside every typed field and none on choices, coalitions, lessons, the opening or the review', () => {
     for (const { store, page } of everyPage()) {
-      const html = render(store);
+      const html = pageBlock(render(store), page);
       const { kind } = pageSpec(store.getState().book.draft, page);
       const typedFields = textFields(html);
       const lists = picks(html);
@@ -1261,7 +1364,8 @@ describe('ready values', () => {
   it('labels seats and the threshold, marking the Israeli values', () => {
     const store = groupBookStore();
     turnTo(store, 'rules.seats');
-    let html = render(store);
+    // M7-19: the seats and the threshold share one screen.
+    let html = pageBlock(render(store), 'rules.seats');
     expect(labels(pickList(html, 0))).toEqual([
       '50',
       '100',
@@ -1271,8 +1375,7 @@ describe('ready values', () => {
     ]);
     expect(chosen(pickList(html, 0))).toBe('120');
     expect(pickList(html, 0)).toContain('aria-label="Выбрать из списка"');
-    store.bookNext();
-    html = render(store);
+    html = pageBlock(render(store), 'rules.threshold');
     expect(labels(pickList(html, 0))).toEqual([
       '0%',
       '1%',
@@ -1282,8 +1385,10 @@ describe('ready values', () => {
       '5%',
     ]);
     expect(chosen(pickList(html, 0))).toBe('3.25');
-    store.answerBook(0, '3,3');
-    expect(chosen(pickList(render(store), 0))).toBe('');
+    store.answerBook(0, '3,3', 'rules.threshold');
+    expect(
+      chosen(pickList(pageBlock(render(store), 'rules.threshold'), 0)),
+    ).toBe('');
   });
 
   it('labels counts, turnout and yearly changes with their units', () => {
@@ -1314,10 +1419,10 @@ describe('ready values', () => {
   it('offers the rest to 100% first on a percents row, named after the row', () => {
     const store = groupBookStore();
     turnTo(store, 'compose');
-    store.answerBook(0, '40');
-    store.answerBook(1, '20');
-    store.answerBook(2, '15');
-    const html = render(store);
+    store.answerBook(0, '40', 'compose');
+    store.answerBook(1, '20', 'compose');
+    store.answerBook(2, '15', 'compose');
+    const html = pageBlock(render(store), 'compose');
     const list = labels(pickList(html, 3));
     expect(list[0]).toBe('Остаток до 100%: 25%');
     expect(list.slice(1)).toEqual(
@@ -1347,12 +1452,13 @@ describe('lessons', () => {
   it('explain what a voter group is, in Russian', () => {
     const store = groupBookStore();
     turnTo(store, 'people.about');
-    const html = render(store);
+    const screen = render(store);
+    const html = pageBlock(screen, 'people.about');
     expect(texts(html, 'data-question')).toEqual([
       'Что такое группа избирателей?',
     ]);
-    expect(html).toContain('data-chapter="2"');
-    expect(html).toContain('Глава 2 из 8 · Состав избирателей');
+    expect(screen).toContain('data-chapter="2"');
+    expect(screen).toContain('Глава 2 из 8 · Состав избирателей');
     expect(html).toContain(
       'Социальные группы — необязательный способ описать ваше представление',
     );
@@ -1368,13 +1474,13 @@ describe('lessons', () => {
       expect(points[index], `${index}`).toMatch(pattern);
     });
     expect(html).not.toMatch(/data-book-field|data-book-pick|data-suggested/);
-    expect(action(html, 'book-next')).toBe('Далее');
+    expect(action(screen, 'book-next')).toBe('Далее');
   });
 
   it('show where Likud and Ra’am get their votes, from the engine', () => {
     const store = groupBookStore();
     turnTo(store, 'people.mix');
-    const html = render(store);
+    const html = pageBlock(render(store), 'people.mix');
     expect(texts(html, 'data-question')).toEqual([
       'Откуда партия получает голоса?',
     ]);
@@ -1385,7 +1491,7 @@ describe('lessons', () => {
     expect(count(html, /data-mix-bar="/)).toBe(8);
     expect(count(html, /data-legend="/)).toBe(6);
     expect(texts(html, 'data-mix-line')).toEqual([
-      'Ликуд: голоса из 6 групп; больше всего — «Традиционные евреи, масорти ле дати», 43,06%.',
+      'Ликуд: голоса из 6 групп; больше всего — «Традиционные евреи, масорти ле дати», 42,67%.',
       'РААМ: голоса из 2 групп; больше всего — «Арабские граждане», 97,70%.',
     ]);
     expect(html).not.toMatch(/data-book-field|data-book-pick|data-suggested/);
@@ -1397,13 +1503,16 @@ describe('lessons', () => {
     (locale: Locale) => {
       const store = groupBookStore(locale);
       turnTo(store, 'people.about');
-      let html = render(store);
-      expect(html).not.toMatch(/\bbook\.[a-zA-Z]/);
-      expect(count(html, /data-lesson-point/)).toBe(5);
-      store.bookNext();
-      html = render(store);
-      expect(html).toContain('data-page="people.mix"');
-      expect(html).toContain(formatDecimal(locale, '43.06'));
+      const screen = render(store);
+      expect(screen).not.toMatch(/\bbook\.[a-zA-Z]/);
+      expect(
+        count(pageBlock(screen, 'people.about'), /data-lesson-point/),
+      ).toBe(5);
+      // M7-19/M7-20: both lessons share the screen the group question opens.
+      expect(screen).toContain('data-page="people.set"');
+      const html = pageBlock(screen, 'people.mix');
+      expect(html).toContain('data-book-page="people.mix"');
+      expect(html).toContain(formatDecimal(locale, '42.67'));
       expect(html).toContain(formatDecimal(locale, '97.70'));
       expect(html).not.toMatch(/\bbook\.[a-zA-Z]/);
     },
@@ -1412,9 +1521,11 @@ describe('lessons', () => {
   it('shows the example set with its shares and source on the set page', () => {
     const store = groupBookStore();
     turnTo(store, 'people.mix');
-    expect(render(store)).not.toContain('data-example-set');
+    expect(pageBlock(render(store), 'people.mix')).not.toContain(
+      'data-example-set',
+    );
     turnTo(store, 'people.set');
-    let html = render(store);
+    let html = pageBlock(render(store), 'people.set');
     expect(html).toContain('data-example-set');
     expect(texts(html, 'data-set-title')).toEqual([
       'Пример — доли групп по данным ЦСБ за 2022 год',
@@ -1441,13 +1552,15 @@ describe('lessons', () => {
     expect(source).toContain('Центральное статистическое бюро Израиля');
     expect(source).toContain('2022');
     expect(source).toContain('100%');
-    store.answerBook(0, 'example');
-    html = render(store);
+    store.answerBook(0, 'example', 'people.set');
+    html = pageBlock(render(store), 'people.set');
     const [told = ''] = texts(html, 'data-narrator');
     expect(told).toContain('2022');
     expect(told).toContain('допущения');
-    store.answerBook(0, 'own');
-    expect(render(store)).toContain('data-example-set');
+    store.answerBook(0, 'own', 'people.set');
+    expect(pageBlock(render(store), 'people.set')).toContain(
+      'data-example-set',
+    );
   });
 
   it.each(LOCALES)(

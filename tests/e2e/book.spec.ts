@@ -5,6 +5,7 @@ import {
   back,
   BASELINE_SEATS,
   book,
+  bookPage,
   expect,
   loadPresetFixture,
   next,
@@ -18,20 +19,23 @@ import {
 } from './helpers';
 
 const EXAMPLE_SEATS = {
-  likud: '31',
-  'yesh-atid': '30',
+  likud: '30',
+  'yesh-atid': '29',
   avoda: '11',
-  'religious-zionism': '14',
-  shas: '18',
-  raam: '16',
+  'religious-zionism': '15',
+  shas: '20',
+  raam: '15',
 };
 
 async function sixLists(page: Page) {
   await nextTo(page, 'parties.count');
-  await page.locator('[data-book-field]').first().fill('6');
-  await next(page);
-  await page.locator('[data-book-choice="example"]').check();
-  await expect(page.locator('[data-narrator]')).toBeVisible();
+  await bookPage(page, 'parties.count')
+    .locator('[data-book-field]')
+    .first()
+    .fill('6');
+  const naming = bookPage(page, 'parties.naming');
+  await naming.locator('[data-book-choice="example"]').check();
+  await expect(naming.locator('[data-narrator]')).toBeVisible();
   await next(page);
 }
 
@@ -143,17 +147,22 @@ test.describe('M7-07 fresh questionnaire', () => {
     await nextTo(page, 'parties.count');
     await page.locator('[data-book-field]').first().fill('5');
     await nextTo(page, 'parties.naming');
-    await page.locator('[data-book-choice="example"]').click();
+    await bookPage(page, 'parties.naming')
+      .locator('[data-book-choice="example"]')
+      .click();
     const dialog = page.locator('[data-book-confirm]');
     await expect(dialog).toBeVisible();
     await dialog.locator('[data-locale="he"]').click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'he');
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     await expect(dialog).toBeVisible();
-    await expect(book(page)).toHaveAttribute('data-page', 'parties.naming');
+    // M7-19: the count and the naming share one screen.
+    await expect(book(page)).toHaveAttribute('data-page', 'parties.count');
+    await expect(bookPage(page, 'parties.naming')).toBeVisible();
     await dialog.locator('[data-action="book-cancel"]').click();
-    await back(page);
-    await expect(page.locator('[data-book-field]').first()).toHaveValue('5');
+    await expect(
+      bookPage(page, 'parties.count').locator('[data-book-field]').first(),
+    ).toHaveValue('5');
   });
 });
 
@@ -180,9 +189,10 @@ test.describe('questionnaire book', () => {
   }) => {
     await openBook(page);
     await next(page);
-    await expect(page.locator('[data-question]')).toBeFocused();
-    await page.locator('[data-book-field]').first().fill('5');
-    await expect(page.locator('[data-narrator]')).toBeVisible();
+    const count = bookPage(page, 'parties.count');
+    await expect(count.locator('[data-question]')).toBeFocused();
+    await count.locator('[data-book-field]').first().fill('5');
+    await expect(count.locator('[data-narrator]')).toBeVisible();
     await page.waitForTimeout(600);
     await expect(book(page)).toHaveAttribute('data-page', 'parties.count');
   });
@@ -221,7 +231,9 @@ test.describe('questionnaire book', () => {
     await openBook(page);
     await sixLists(page);
     await nextTo(page, 'people.set');
-    await page.locator('[data-book-choice="example"]').check();
+    await bookPage(page, 'people.set')
+      .locator('[data-book-choice="example"]')
+      .check();
     await nextTo(page, 'compose');
     await expect(page.locator('[data-compose-party] option')).toHaveCount(6);
     await toBuild(page);
@@ -271,33 +283,48 @@ test.describe('questionnaire book', () => {
   }) => {
     await openBook(page);
     await nextTo(page, 'parties.count');
-    await page.locator('[data-book-field="0"]').fill('2');
+    await bookPage(page, 'parties.count')
+      .locator('[data-book-field="0"]')
+      .fill('2');
     await nextTo(page, 'parties.naming');
-    await page.locator('[data-book-choice="own"]').check();
+    await bookPage(page, 'parties.naming')
+      .locator('[data-book-choice="own"]')
+      .check();
     await nextTo(page, 'parties.names');
-    await page.locator('[data-book-field="1"]').fill('At threshold');
-    await page.locator('[data-book-field="3"]').fill('Other');
+    const names = bookPage(page, 'parties.names');
+    await names.locator('[data-book-field="1"]').fill('At threshold');
+    await names.locator('[data-book-field="3"]').fill('Other');
     await nextTo(page, 'people.set');
-    await page.locator('[data-book-choice="own"]').check();
+    await bookPage(page, 'people.set')
+      .locator('[data-book-choice="own"]')
+      .check();
     await nextTo(page, 'people.count');
-    await page.locator('[data-book-field="0"]').fill('2');
+    await bookPage(page, 'people.count')
+      .locator('[data-book-field="0"]')
+      .fill('2');
     await nextTo(page, 'people.names');
-    await page.locator('[data-book-field="1"]').fill('Group one');
-    await page.locator('[data-book-field="3"]').fill('Group two');
+    const groups = bookPage(page, 'people.names');
+    await groups.locator('[data-book-field="1"]').fill('Group one');
+    await groups.locator('[data-book-field="3"]').fill('Group two');
     await nextTo(page, 'turnout');
-    await page.locator('[data-book-field="0"]').fill('70');
-    await page.locator('[data-book-field="1"]').fill('70');
+    const turnout = bookPage(page, 'turnout');
+    await turnout.locator('[data-book-field="0"]').fill('70');
+    await turnout.locator('[data-book-field="1"]').fill('70');
     await nextTo(page, 'votes.shares');
-    await page.locator('[data-book-field="0"]').fill('3.25');
-    await page.locator('[data-book-field="1"]').fill('96.75');
+    const shares = bookPage(page, 'votes.shares');
+    await shares.locator('[data-book-field="0"]').fill('3.25');
+    await shares.locator('[data-book-field="1"]').fill('96.75');
     await nextTo(page, 'compose');
-    await page.locator('[data-book-field="0"]').fill('1');
-    await page.locator('[data-book-field="1"]').fill('99');
-    await page.locator('[data-action="compose-next"]').click();
-    await page.locator('[data-book-field="2"]').fill('5');
-    await page.locator('[data-book-field="3"]').fill('95');
+    const compose = bookPage(page, 'compose');
+    await compose.locator('[data-book-field="0"]').fill('1');
+    await compose.locator('[data-book-field="1"]').fill('99');
+    await compose.locator('[data-action="compose-next"]').click();
+    await compose.locator('[data-book-field="2"]').fill('5');
+    await compose.locator('[data-book-field="3"]').fill('95');
     await nextTo(page, 'rules.threshold');
-    await page.locator('[data-book-field="0"]').fill('3.25');
+    await bookPage(page, 'rules.threshold')
+      .locator('[data-book-field="0"]')
+      .fill('3.25');
     await toBuild(page);
     await page.locator('[data-action="book-build"]').click();
     await showView(page, 'seats');
@@ -348,7 +375,9 @@ test.describe('questionnaire book', () => {
     await sixLists(page);
     expect(await seriousFindings(page), 'names').toEqual([]);
     await nextTo(page, 'people.set');
-    await page.locator('[data-book-choice="example"]').check();
+    await bookPage(page, 'people.set')
+      .locator('[data-book-choice="example"]')
+      .check();
     await nextTo(page, 'compose');
     expect(await seriousFindings(page), 'compose').toEqual([]);
     await nextTo(page, 'votes.check');
@@ -358,7 +387,7 @@ test.describe('questionnaire book', () => {
     await page
       .locator('[data-action="book-edit"][data-page="parties.count"]')
       .click();
-    await page.locator('[data-action="open-fact"]').click();
+    await page.locator('[data-action="open-fact"]').first().click();
     await expect(book(page)).toHaveAttribute('data-page', 'facts');
     expect(await seriousFindings(page), 'facts').toEqual([]);
   });
@@ -367,9 +396,11 @@ test.describe('questionnaire book', () => {
     await openBook(page);
     await nextTo(page, 'people.about');
     expect(await seriousFindings(page), 'about').toEqual([]);
-    await next(page);
-    await expect(book(page)).toHaveAttribute('data-page', 'people.mix');
-    await expect(page.locator('[data-mix-bar]')).toHaveCount(8);
+    // M7-19: the mix lesson shares the about screen.
+    await expect(bookPage(page, 'people.mix')).toBeVisible();
+    await expect(
+      bookPage(page, 'people.mix').locator('[data-mix-bar]'),
+    ).toHaveCount(8);
     expect(await seriousFindings(page), 'mix').toEqual([]);
   });
 
@@ -378,17 +409,20 @@ test.describe('questionnaire book', () => {
   }) => {
     await openBook(page);
     await nextTo(page, 'parties.count');
-    await page.locator('[data-book-pick="0"]').selectOption('7');
-    await expect(page.locator('[data-book-field="0"]')).toHaveValue('7');
-    await expect(page.locator('[data-suggested]')).toHaveCount(0);
-    await page.locator('[data-book-field="0"]').fill('5');
-    await expect(page.locator('[data-book-pick="0"]')).toHaveValue('5');
+    const count = bookPage(page, 'parties.count');
+    await count.locator('[data-book-pick="0"]').selectOption('7');
+    await expect(count.locator('[data-book-field="0"]')).toHaveValue('7');
+    await expect(count.locator('[data-suggested]')).toHaveCount(0);
+    await count.locator('[data-book-field="0"]').fill('5');
+    await expect(count.locator('[data-book-pick="0"]')).toHaveValue('5');
   });
 
   test('suggests the Israeli list names', async ({ page }) => {
     await openBook(page);
     await nextTo(page, 'parties.naming');
-    await expect(page.locator('[data-book-choice="catalog"]')).toBeChecked();
+    await expect(
+      bookPage(page, 'parties.naming').locator('[data-book-choice="catalog"]'),
+    ).toBeChecked();
     await nextTo(page, 'parties.names');
     await expect(page.locator('[data-book-field="1"]')).toHaveValue('Ликуд');
     await expect(page.locator('[data-book-pick="0"]')).toHaveValue('likud');
@@ -397,7 +431,9 @@ test.describe('questionnaire book', () => {
   test('takes a list by name and builds with it', async ({ page }) => {
     await openBook(page);
     await nextTo(page, 'parties.naming');
-    await page.locator('[data-book-choice="own"]').check();
+    await bookPage(page, 'parties.naming')
+      .locator('[data-book-choice="own"]')
+      .check();
     await nextTo(page, 'parties.names');
     await page.locator('[data-book-pick="0"]').selectOption('shas');
     await expect(page.locator('[data-book-field="1"]')).toHaveValue('ШАС');
@@ -434,10 +470,11 @@ test.describe('questionnaire book', () => {
   test('opens the example note on a click', async ({ page }) => {
     await openBook(page);
     await nextTo(page, 'parties.count');
-    await expect(page.locator('[data-suggested-more]')).toBeHidden();
-    await page.locator('[data-suggested] summary').click();
-    await expect(page.locator('[data-suggested-more]')).toBeVisible();
-    await expect(page.locator('[data-suggested-more]')).toContainText(
+    const count = bookPage(page, 'parties.count');
+    await expect(count.locator('[data-suggested-more]')).toBeHidden();
+    await count.locator('[data-suggested] summary').click();
+    await expect(count.locator('[data-suggested-more]')).toBeVisible();
+    await expect(count.locator('[data-suggested-more]')).toContainText(
       'Это значение для примера.',
     );
   });

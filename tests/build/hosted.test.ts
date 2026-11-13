@@ -3,7 +3,7 @@ import { build } from 'vite';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { CONTENT_SECURITY_POLICY } from '../../vite.config';
 
-const BASE = 'https://seriycoder.github.io/Election-Public/';
+const BASE = 'https://seriycoder.github.io/Israel-Election-Simulator/';
 const TITLE = 'סימולטור בחירות וקואליציות';
 const DESCRIPTION =
   'מודל לימודי: איך אחוזי ההצבעה, ההעדפות ואחוז החסימה משנים את חלוקת המנדטים ואת הקואליציות האפשריות. לא תחזית.';

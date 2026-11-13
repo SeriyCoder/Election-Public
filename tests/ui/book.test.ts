@@ -169,16 +169,16 @@ const DEFAULT_PAGES = [
   'parties.count',
   'parties.naming',
   'parties.names',
-  ...LESSONS,
   'people.set',
+  ...LESSONS,
   'turnout',
   'votes.shares',
   'compose',
   'votes.check',
   'growth',
-  'rules.seats',
-  'rules.threshold',
   'coalitions',
+  'rules.threshold',
+  'rules.seats',
   'review',
 ];
 
@@ -243,6 +243,7 @@ describe('page list', () => {
     );
     const at = (page: string) => pages.indexOf(page);
     expect(pages.slice(at('people.names') + 1, at('growth'))).toEqual([
+      ...LESSONS,
       'turnout',
       'votes.shares',
       'compose',
@@ -291,7 +292,7 @@ describe('page list', () => {
       legacyDraftOf({ 'growth.ask': ['yes'], 'turnoutChange.ask': ['yes'] }),
     );
     const at = (page: string) => pages.indexOf(page);
-    expect(pages.slice(at('growth'), at('rules.seats'))).toEqual(['growth']);
+    expect(pages.slice(at('growth'), at('coalitions'))).toEqual(['growth']);
   });
 
   it('shows one directed relationships page without a preliminary choice', () => {
@@ -300,6 +301,8 @@ describe('page list', () => {
     );
     expect(pages.slice(pages.indexOf('coalitions'))).toEqual([
       'coalitions',
+      'rules.threshold',
+      'rules.seats',
       'review',
     ]);
   });
@@ -587,7 +590,8 @@ describe('suggestions', () => {
       'parties.naming': ['catalog'],
       'parties.names': FIRST_LISTS.flatMap((id) => [id, '']),
       'people.set': ['example'],
-      turnout: Array(7).fill('70'),
+      // M7-19: the ultra-Orthodox group (sixth in the Basic order) suggests 85.
+      turnout: ['70', '70', '70', '70', '70', '85', '70'],
       growth: Array(7).fill('0'),
       compose: FIRST_LISTS.flatMap(() => EVEN_SEVEN),
       'votes.check': [],
@@ -639,32 +643,33 @@ describe('suggestions', () => {
   it('suggests the Section 14.4 example, described by party, for the six lists and the example groups', () => {
     const draft = legacyDraftOf(SIX_EXAMPLE);
     expect(shownTexts(draft, 'people.set')).toEqual(['example']);
+    // M7-19: derived at the per-group turnout (ultra-Orthodox 85).
     expect(shownTexts(draft, 'votes.shares')).toEqual([
-      '25.61',
-      '24.77',
-      '9.69',
-      '11.95',
-      '14.93',
-      '13.05',
+      '25.25',
+      '24.31',
+      '9.47',
+      '12.02',
+      '16.2',
+      '12.75',
     ]);
     // M7-15: mapped by group ID in the Basic order; knitted kippot gets 0.
     expect(shownTexts(draft, 'compose.0')).toEqual([
-      '32.8',
-      '43.1',
-      '6.2',
+      '32.5',
+      '42.6',
+      '6.1',
       '0',
       '6.6',
-      '4.3',
+      '5.2',
       '7',
     ]);
     expect(shownTexts(draft, 'compose.1')).toEqual([
-      '61',
-      '19.8',
+      '60.8',
+      '19.7',
       '1.6',
       '0',
-      '6.9',
-      '2.2',
-      '8.5',
+      '6.8',
+      '2.7',
+      '8.4',
     ]);
     expect(shownTexts(draft, 'compose.2')).toEqual([
       '69.3',
@@ -676,22 +681,22 @@ describe('suggestions', () => {
       '9.3',
     ]);
     expect(shownTexts(draft, 'compose.3')).toEqual([
-      '14.1',
-      '30.7',
-      '36.4',
+      '13.6',
+      '29.9',
+      '35.3',
       '0',
       '0',
-      '13.8',
-      '5',
+      '16.3',
+      '4.9',
     ]);
     expect(shownTexts(draft, 'compose.4')).toEqual([
-      '11.2',
-      '24.6',
-      '10.6',
+      '10.1',
+      '22.2',
+      '9.5',
       '0',
       '0',
-      '51.6',
-      '2',
+      '56.4',
+      '1.8',
     ]);
     expect(shownTexts(draft, 'compose.5')).toEqual([
       '0',
@@ -1284,14 +1289,22 @@ describe('narrator', () => {
   });
 });
 
+/** M7-19: the six-list example at the per-group turnout (ultra-Orthodox 85). */
 const EXAMPLE_SEATS = {
-  likud: 31,
-  'yesh-atid': 30,
+  likud: 30,
+  'yesh-atid': 29,
   avoda: 11,
-  'religious-zionism': 14,
-  shas: 18,
-  raam: 16,
+  'religious-zionism': 15,
+  shas: 20,
+  raam: 15,
 };
+
+/** The suggested group turnout in the Basic order (M7-19). */
+const EXAMPLE_TURNOUT = CATALOG_GROUPS.map((group) =>
+  group.id === 'haredi'
+    ? { numerator: '17', denominator: '20' }
+    : { numerator: '7', denominator: '10' },
+);
 
 describe('build', () => {
   const thresholdBoundaryAnswers: Answers = {
@@ -1334,10 +1347,13 @@ describe('build', () => {
     expect(build.input).toMatchObject({
       schemaVersion: 5,
       inputMode: 'parties',
-      rules: { overallTurnout: { numerator: '7', denominator: '10' } },
-      groups: CATALOG_GROUPS.map((group) => ({
+      // M7-19: derived exactly from the per-group turnout.
+      rules: {
+        overallTurnout: { numerator: '119000000', denominator: '166080371' },
+      },
+      groups: CATALOG_GROUPS.map((group, index) => ({
         id: group.id,
-        turnout: { numerator: '7', denominator: '10' },
+        turnout: EXAMPLE_TURNOUT[index],
       })),
     });
     expect(
@@ -1355,15 +1371,11 @@ describe('build', () => {
     });
     const { input } = buildBook(draft, answered);
     const groups = input.groups as Json[];
-    expect(groups.map((group) => group.turnout)).toEqual([
-      { numerator: '7', denominator: '10' },
-      { numerator: '7', denominator: '10' },
-      { numerator: '7', denominator: '10' },
-      { numerator: '7', denominator: '10' },
-      { numerator: '1', denominator: '2' },
-      { numerator: '7', denominator: '10' },
-      { numerator: '7', denominator: '10' },
-    ]);
+    expect(groups.map((group) => group.turnout)).toEqual(
+      EXAMPLE_TURNOUT.map((turnout, index) =>
+        index === 4 ? { numerator: '1', denominator: '2' } : turnout,
+      ),
+    );
     const baselineWalk = legacyWalk(SIX_EXAMPLE);
     const baseline = buildBook(baselineWalk.draft, baselineWalk.answered).input;
     expect(input.parties).toEqual(baseline.parties);
@@ -1393,9 +1405,9 @@ describe('build', () => {
       { section: 'votes.shares', entity: null },
       ...EXAMPLE_LISTS.map((entity) => ({ section: 'compose', entity })),
       ...groups.map((entity) => ({ section: 'growth', entity })),
-      { section: 'rules.seats', entity: null },
-      { section: 'rules.threshold', entity: null },
       ...EXAMPLE_LISTS.map((entity) => ({ section: 'coalitions', entity })),
+      { section: 'rules.threshold', entity: null },
+      { section: 'rules.seats', entity: null },
     ]);
   });
 
@@ -1415,7 +1427,8 @@ describe('build', () => {
         majorityOverride: null,
         threshold: '0.0325',
         allocationMethod: 'hamilton',
-        overallTurnout: { numerator: '7', denominator: '10' },
+        // M7-19: derived from 70% and the ultra-Orthodox 85%.
+        overallTurnout: { numerator: '595', denominator: '829' },
         validBallotRate: '0.999',
       },
       groups: CATALOG_GROUPS.map(({ id }) => ({
@@ -1761,7 +1774,8 @@ describe('electorate check', () => {
       ...SIX_EXAMPLE,
       'turnout.4': ['50'],
     });
-    const shares = ['31.4', '23', '7.4', '0', '22.3', '10.3', '5.6'];
+    // M7-19: at the ultra-Orthodox suggestion of 85.
+    const shares = ['31.5', '22.9', '7.4', '0', '22.3', '10.3', '5.6'];
     expect(rows(draft, answered)).toEqual(
       groups.map((id, g) => [id, shares[g], statistics[g]]),
     );
@@ -1775,7 +1789,11 @@ describe('electorate check', () => {
   });
 
   it('gives the example groups their statistics beside the even split with other parties', () => {
-    const { draft, answered } = legacyWalk({ 'people.set': ['example'] });
+    // M7-19: one turnout for all, so the even split stays the group sizes.
+    const { draft, answered } = legacyWalk({
+      'people.set': ['example'],
+      turnout: Array(7).fill('70'),
+    });
     expect(rows(draft, answered)).toEqual(
       groups.map((id, g) => [id, EVEN_SEVEN[g], statistics[g]]),
     );
@@ -1852,9 +1870,8 @@ describe('page parts', () => {
       expect(pageParts(EMPTY_DRAFT, lesson), lesson).toEqual([[]]);
     }
     for (const page of bookPages(EMPTY_DRAFT)) {
-      expect(partCount(EMPTY_DRAFT, page), page).toBe(
-        page === 'review' ? reviewParts(EMPTY_DRAFT).length : 1,
-      );
+      // M7-19: the review is one part too.
+      expect(partCount(EMPTY_DRAFT, page), page).toBe(1);
     }
   });
 
@@ -1994,7 +2011,8 @@ describe('review parts', () => {
       for (const part of parts) {
         expect(part.length, name).toBeGreaterThan(0);
       }
-      expect(partCount(draft, 'review'), name).toBe(parts.length);
+      // M7-19: the screen shows every chapter at once.
+      expect(partCount(draft, 'review'), name).toBe(1);
     }
   });
 
@@ -2049,19 +2067,18 @@ describe('review parts', () => {
   });
 });
 describe('lessons', () => {
-  it('open chapter 2 between the party names and the group set', () => {
+  it('open chapter 2 after the group question (M7-20)', () => {
     for (const draft of [
       EMPTY_DRAFT,
       legacyDraftOf(SIX_EXAMPLE),
       legacyDraftOf({ 'people.set': ['own'], 'people.count': ['8'] }),
     ]) {
       const pages = bookPages(draft);
-      const at = pages.indexOf('parties.names');
-      expect(pages.slice(at, at + 4)).toEqual([
-        'parties.names',
-        ...LESSONS,
-        'people.set',
-      ]);
+      // The question opens the chapter; the lessons close it, as a footnote.
+      expect(pages[pages.indexOf('people.set') - 1]).toBe('parties.names');
+      const mix = pages.indexOf('people.mix');
+      expect(pages[mix - 1]).toBe('people.about');
+      expect(pages[mix + 1]).toBe('turnout');
     }
   });
 
@@ -2133,7 +2150,8 @@ describe('group mix example', () => {
     }
     expect(mix[0]).toMatchObject({
       groups: 6,
-      top: { groupId: 'traditional', share: '43.06' },
+      // M7-19: haredi turnout 85% in the example (was 43.06).
+      top: { groupId: 'traditional', share: '42.67' },
     });
     expect(mix[1]).toMatchObject({
       groups: 2,

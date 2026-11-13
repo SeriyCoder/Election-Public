@@ -109,6 +109,11 @@ function html(page: string, draft?: BookDraft, language?: 'ru' | 'en' | 'he') {
   return renderToString(<App store={bookStore(page, draft, language)} />);
 }
 
+/** One page's block of a screen that stacks several pages (M7-19). */
+function section(text: string, page: string) {
+  return element(text, `data-book-page="${page}"`);
+}
+
 describe('M7-15 Basic (Israel) groups', () => {
   it('adds knitted kippot and orders the catalog like the user set', () => {
     expect(CATALOG_GROUPS.map((group) => group.id)).toEqual(BASIC);
@@ -190,17 +195,17 @@ describe('M7-15 composition always distributed on one page', () => {
       'parties.count',
       'parties.naming',
       'parties.names',
+      'people.set',
       'people.about',
       'people.mix',
-      'people.set',
       'turnout',
       'votes.shares',
       'compose',
       'votes.check',
       'growth',
-      'rules.seats',
-      'rules.threshold',
       'coalitions',
+      'rules.threshold',
+      'rules.seats',
       'review',
     ]);
     const pages = bookPages(heavy());
@@ -227,7 +232,8 @@ describe('M7-15 composition always distributed on one page', () => {
   it('maps the six-list example compositions by group ID with none for the new group', () => {
     const described = describeElectorate(
       EXAMPLE_GROUPS.map(([, share]) => fractionToPercent(share) ?? '0'),
-      EXAMPLE_GROUPS.map(() => '70'),
+      // M7-19: the suggested turnout, ultra-Orthodox 85 and the rest 70.
+      EXAMPLE_GROUPS.map(([id]) => (id === 'haredi' ? '85' : '70')),
       EXAMPLE_GROUPS.map(([, , weights]) =>
         weights.map((weight) => fractionToPercent(weight) ?? '0'),
       ),
@@ -265,9 +271,10 @@ describe('M7-15 composition always distributed on one page', () => {
     const result = validateScenario(input);
     if (!result.ok || result.scenario.inputMode !== 'parties')
       throw new Error('invalid');
+    // M7-19: the example follows the ultra-Orthodox turnout of 85.
     expect(
       runSeats(result.scenario).allocation.parties.map((party) => party.seats),
-    ).toEqual([31, 30, 11, 14, 18, 16]);
+    ).toEqual([30, 29, 11, 15, 20, 15]);
     for (const language of LOCALES) {
       const store = createStore({
         language,
@@ -343,7 +350,7 @@ describe('M7-15 composition always distributed on one page', () => {
   it.each(LOCALES)(
     'renders the party selector, bar, every group and the align action in %s',
     (language) => {
-      const page = html('compose', EMPTY_DRAFT, language);
+      const page = section(html('compose', EMPTY_DRAFT, language), 'compose');
       const select = element(page, 'data-compose-party');
       expect(count(select, /<option/)).toBe(4);
       expect(page).toContain('data-action="compose-previous"');
@@ -391,7 +398,7 @@ describe('M7-15 single compact screens', () => {
   });
 
   it('shows all ten vote shares as compact cells with a bar instead of the side pie', () => {
-    const page = html('votes.shares', heavy());
+    const page = section(html('votes.shares', heavy()), 'votes.shares');
     expect(count(page, /data-book-cell="/)).toBe(10);
     expect(count(element(page, 'data-shares-bar'), /data-segment="/)).toBe(10);
     expect(page).not.toContain('data-pie');

@@ -24,6 +24,7 @@ import { GroupTurnoutControl, LockButton } from './Editor';
 import { entityName } from './names';
 import { partyLockKey, type Store } from './store';
 import { IntegratedPanel } from './PanelControls';
+import { Purpose } from './Purpose';
 import type { CoalitionRun } from './coalitionRunner';
 
 interface TypedRate {
@@ -175,6 +176,7 @@ export function CoalitionWorkspace({
       data-coalition-workspace
       data-workspace-mode={raw?.inputMode ?? 'invalid'}
     >
+      <Purpose t={t} onOpenSimulator={() => store.setView('future')} />
       <IntegratedPanel store={store} t={t} run={run} />
       <section class="workspace-more" data-workspace-more>
         <h3 class="workspace-more__title">{t('panel.more')}</h3>
@@ -196,6 +198,11 @@ export function CoalitionWorkspace({
                 </p>
               ) : (
                 <p class="editor-section__note">{t('workspace.assumption')}</p>
+              )}
+              {state.lockNotice && (
+                <p class="ws-lock-hint" role="status" data-lock-hint>
+                  {t('panel.minUnlocked')}
+                </p>
               )}
               <div class="workspace-parties">
                 {report.parties.map((row) => {

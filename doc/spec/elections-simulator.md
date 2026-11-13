@@ -80,8 +80,10 @@ Keep asset paths relative and avoid server-only APIs so the same build runs from
   workers, `data:` images, `connect-src 'none'`). Vite's module-preload
   polyfill is off. `tests/build/offline.test.ts` builds in memory inside
   `npm test` and checks one file, no external reference or network API, the
-  exact policy and a 450 kB budget (300 kB until M2-24 added the drawings,
-  350 kB until M2-30 added the coalition chooser and pies).
+  exact policy and a 900000-byte budget (300 kB until M2-24 added the drawings,
+  350 kB until M2-30 added the coalition chooser and pies, 450 kB = 460800
+  bytes until M7-19 added the stacked questionnaire screens and the purpose
+  text; the user raised it to 900000 bytes on 2026-11-12).
   Since M2-23 that build runs with `NODE_ENV=production`, so it measures the
   file that ships rather than a test-mode build carrying JSX debug data; the
   file was 294.11 kB at M2-23, 307.90 kB at M2-24 and 362.48 kB at M2-30.
@@ -97,7 +99,10 @@ slash and no credentials, query or fragment; invalid or missing settings fail
 explicitly. The hosted index includes static Hebrew crawler metadata and
 relative resource paths; the offline file contains no hosted metadata or URLs.
 Installed Microsoft Edge captures the real settled app in a fresh offline
-context. Both targets retain inline workers, the CSP and local-only processing.
+context (since M7-20 at a 2400 × 1260 frame scaled 0.5 to the exact
+1200 × 630 image, so the always-open purpose card and a settled coalition
+tile fit together). Both targets retain inline workers, the CSP and
+local-only processing.
 
 ### 2.3 Phone Path
 
@@ -118,12 +123,13 @@ not through app stores and not through an installed app.
 
 The user approved the publication plan in M3-01. The first publication is a
 free, non-commercial **public preview** hosted on GitHub Pages under the user's
-GitHub account. On 2026-11-11 the user chose a sanitized snapshot in a
-separate public MIT source repository,
-`https://github.com/SeriyCoder/Election-Public`, while keeping development
-history in a private repository.
-The planned address is
-`https://seriycoder.github.io/Election-Public/`.
+GitHub account. On 2026-11-11 the user revised the destination: the development
+repository `SeriyCoder/Election` stays private, and a sanitized source snapshot
+without private history is published in the separate public MIT repository
+`https://github.com/SeriyCoder/Election-Public`. The live address, verified in
+M3-03 on 2026-11-12, is `https://seriycoder.github.io/Election-Public/`.
+Later changes are made locally and published only on the user's explicit
+request.
 
 The built page's HTML, bundled application code and bundled examples are
 visible to visitors. Reviewed source, tests and safe documentation are intended
@@ -135,10 +141,11 @@ A push saves source without releasing the site. The prepared GitHub Actions
 workflow deploys only `dist-hosted/`, on explicit manual dispatch from `main`,
 after tests, types, lint and browser gates. Build permissions are read-only;
 only the separate deploy job receives Pages write and OIDC permissions.
-Actions are pinned and checkout credentials are not persisted. M3-03 inspects
-the destination and integrates non-destructively before any authorized upload,
-configures Pages for Actions and verifies the live HTTPS link. Neither M3-01
-nor M3-02 uploads or deploys files. The user explicitly approved the first
+Actions are pinned and checkout credentials are not persisted. M3-03 published
+the snapshot, configured Pages for Actions and verified the live HTTPS link on
+desktop: the live `index.html` matches a fresh local hosted build except for
+line endings in template markup. Phone-size, Firefox and Safari checks are the
+M3-07 follow-up. The user explicitly approved the first
 non-commercial release before the full M3-05 English/Hebrew language review;
 that review remains a post-release follow-up, and the translations must not be
 described as fully reviewed until it is complete.
@@ -1144,7 +1151,7 @@ their tests prove every remainder decision is far from the truncation error.
 | Interface languages | Russian, English and Hebrew, including RTL for Hebrew |
 | Preference behavior | Direct manual distributions; no behavioral inertia parameter |
 | Electoral rules | Universal educational model, not an Israeli legal-rules adapter |
-| Delivery | Offline HTML and a free GitHub Pages public preview planned at `https://seriycoder.github.io/Election-Public/`; a sanitized public MIT source snapshot and manual Actions release, upload and live verification pending |
+| Delivery | Offline HTML and a free GitHub Pages public preview, live at `https://seriycoder.github.io/Election-Public/` (M3-03); sanitized MIT source snapshot in public `SeriyCoder/Election-Public`, development repository private; manual Actions release |
 | Project location | The `Election` workspace folder is the project root |
 | Stack | TypeScript + Vite + Preact; Vitest; Playwright |
 | Phone path | Hosted link in the phone browser; installable PWA optional after feedback (M5); no app store in version 1 |
@@ -1154,8 +1161,8 @@ their tests prove every remainder decision is far from the truncation error.
 | Document language | English |
 
 Publication decisions, revised in M3-02, are recorded in Section 2.4.
-The two build targets are prepared locally; M3-03 handles gated source upload,
-Pages configuration and live HTTPS verification before the link is shared.
+Both build targets are built locally; M3-03 published the hosted target and
+verified the live HTTPS link before it is shared.
 
 Deferred options: jurisdiction-certified allocation, other allocation methods
 (D'Hondt, Sainte-Laguë), surplus-vote agreements, within-party defections,
@@ -1473,7 +1480,8 @@ columns, each end independent.
 ### 14.4 Israeli Example And Catalog
 
 Preset "Israeli educational example": 120 seats, threshold 3.25%, population
-1 000 000, every group at 70% turnout, zero growth and turnout change, full
+1 000 000, Ultra-Orthodox Jews at 85% turnout and every other group at 70%
+(since M7-19; 70% for every group before), zero growth and turnout change, full
 availability and 99.9% validity, open voting with all six lists allowed, no blocks
 and no coalition restrictions. It is labelled in the interface as an
 educational example after the 2022 election, not its results or a poll, and
@@ -1511,7 +1519,10 @@ these rows at 70% turnout into party vote shares, suggested to two decimals
 group, suggested to one decimal; built back they give group shares of
 33.5821 / 24.5047 / 7.9165 / 10.9991 / 17.002 / 5.9956%, the CBS shares at one
 decimal, and the same 31 / 30 / 11 / 14 / 18 / 16 seats, also with Arab
-turnout at 50%.
+turnout at 50%. Since M7-19 the rows are turned at the per-group turnout
+(haredi 85%, others 70%): vote shares 25.25 / 24.31 / 9.47 / 12.02 / 16.2 /
+12.75%, 716 500 ballots, and 30 / 29 / 11 / 15 / 20 / 15 seats for the preset,
+the questionnaire example and the "2022 (учебный)" start example alike.
 
 Catalog group colours from (b): `secular` #0891B2, `traditional` #D97706,
 `religious` #7C3AED, `haredi` #262626, `arab` #15803D, `other` #6B7280.
@@ -1617,9 +1628,16 @@ As built in M7-16: the opening page offers four choices — start from scratch;
 the ready eight-party example "8 партий (свободные названия)" (the user's
 "New 8 parties" set: eight lists with their own names — verbatim in Russian,
 translated in English and Hebrew by the interface language at the moment the
-example is chosen (user request 2026-11-04) — seven
+example is chosen (user request 2026-11-04), and untouched example names
+follow later language switches from whichever locale they were typed in,
+including the frozen supporter-experiment basis and the saved comparison
+baseline (M7-20) — seven
 groups, turnout, vote shares, full compositions, growth and 20 directed
-refusals); the ready "2022 (учебный)" example (the six-list party-mode
+refusals; its figures were revised on 2026-11-13 from the user's updated
+file, with party shares, group turnout and every composition rounded to two
+decimals and aligned exactly to 100% by largest remainder, growth and
+refusals unchanged (`tests/fixtures/new8.json` is the serialisation of the
+revised example); the ready "2022 (учебный)" example (the six-list party-mode
 educational example with the 2022 seats); and skipping the questionnaire,
 after which import stays available on Coalitions. Each example is stored as
 exact questionnaire answers, not as a scenario. "К коалициям" builds it
@@ -1882,6 +1900,71 @@ the plural form of each language (`formatYears`, `pluralCategory` with
 `Intl.PluralRules`) and shows growth values with the locale formatter while
 editing stays exact.
 
+As built in M7-19 (user design revision, 2026-11-12): the questionnaire is
+shown in eight screens, each stacking one or more pages (`bookScreens`,
+`screenOf` in `src/ui/book.ts`): the opening; party count with the naming
+choice; the names; the group question with its count and names, closed by
+both lessons (M7-20 order); group turnout, party vote
+shares and compositions; the check with growth; cooperation, the threshold
+and the seat count (M7-20 order); the review. `book.page` is always the first
+page of its screen;
+Next checks every page on a multi-page screen and confirms them together,
+Back and "Изменить" open the screen holding a page, and only a lone page
+(names) is still cut into parts. The group-turnout suggestion is 85% for
+Ultra-Orthodox Jews and 70% for Arab citizens and every other group. On every
+numeric lock surface — the questionnaire's vote-share and composition pages,
+the Coalitions panel's party shares and composition cells — values at or
+below 7% (exact comparison) start locked; when that would leave fewer than
+two open positions, only exact zeros start locked, and zeros beyond that
+limit stay open (`defaultLocks`). At least two positions always stay
+unlocked: a lock that would break the rule is refused with the
+`panel.minUnlocked` hint, on the editor's and workspace's rebalance locks
+too. A touched lock set is kept (book state or panel session) and never
+re-defaults until the input is replaced; "Выровнять"
+aligns the unlocked shares exactly to 100% through `scalePercents`. The
+review is one screen: each chapter shows its colour keys or stacked bars and
+lines, with "Изменить" under them; the check page shows its pie inline with a
+way back to turnout. The opening and the Coalitions view show a short purpose
+statement (`src/ui/Purpose.tsx`); since M7-20 the card is always open — an
+accent card with a 4 px leading bar and marker-based keyword emphasis
+rendered as text nodes — stating that demographics and sector turnout
+largely set the outcome and, as a hypothesis of
+the example and not a forecast, that without a union of the two
+large secular parties of the right and the centre a government that is
+neither religious nor dependent on Arab parties is hard to form. The
+eight-party card and its "Заполнить анкету" button are tinted, the example
+names carry neutral descriptions, closed locks are brighter, and a custom
+Coalitions tile can be edited (✎) as well as deleted.
+
+As built in M7-20 (second user design revision, 2026-11-12/13): the opening's
+single saturated call to action is «Заполнить анкету (8 партий)» ("Fill Out
+Questionnaire (8 Parties)" / «מילוי שאלון (8 מפלגות)», user wording verbatim);
+the other start actions are visually secondary, and the opening scrolls
+inside its body like the stacked screens, keeping its drawing in a side
+column on wide screens. The fifth example party's description is the
+dedicated `book.example.about.beiteinu` text about Russian-speaking secular
+immigrants; the shared catalog note of Yisrael Beiteinu is unchanged. The
+chapter-2 question carries a footnote asterisk whose explanation — the
+what-is-a-group lesson with its picture — closes the screen. On the
+Coalitions view the purpose card adds the left-edit/majority-recalculation
+paragraph and a bright «Открыть Симулятор коалиций →» button switching to
+the future view; the tiles block is titled «Возможные коалиции» ("Possible
+Coalitions" / «קואליציות אפשריות») with the tick-up-to-four hint and a second
+bright simulator button, and the «Симуляции коалиций» item in the view bar
+carries a permanent accent. The future view opens with a banner (the user's
+wording) naming demographics and turnout as the two main factors; the
+coalition cards of both future modes group their captions into «В коалиции:»
+members — party-colour dot, saturated blue — and «Вне коалиции:» in muted
+slate, names trimmed so no space precedes the colon. The supporter-turnout
+card shows the computed overall turnout, frozen base → current, in both entry
+modes; when the input's shares no longer sum to 100% the card offers
+«Выровнять автоматически», which aligns the shares with the current locks
+and rebuilds a suspended linked basis in the same step. The experiment's
+three snapshots are titled and explained: the middle card names the changed
+supporter turnout as the turnout-simulation result and carries the overall
+turnout before → after; the third card names the combined new turnout and
+demographic shift over the chosen years.
+
 ### 14.6 Visual World And Page Fit
 
 Light Israeli palette: white, blue, palm green and the metal tones of a coin.
@@ -1898,7 +1981,10 @@ image or font downloads.
 Every questionnaire page fits without vertical or horizontal scrolling at
 1280 × 720, 1366 × 768 and 1440 × 900, at 100% and 125% zoom, including long
 names, input errors and narrator replies, with all actions visible. Below
-those sizes the page may scroll while the navigation stays reachable.
+those sizes the page may scroll while the navigation stays reachable. Since
+M7-19 this applies to single-page screens other than the review; a screen
+stacking several pages, the one-screen review and, since M7-20, the opening
+scroll inside the body while the head and navigation stay in view.
 
 As built in M2-24: `src/ui/motifs.tsx` holds original inline SVG drawings,
 decorative (`aria-hidden`, not focusable, no external reference): menorah on

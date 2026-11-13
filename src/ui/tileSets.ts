@@ -12,6 +12,20 @@ export interface TileEntry {
   readonly label: string;
 }
 
+/** The custom sets with one set's members and label replaced, key kept (M7-19). */
+export function replaceCustomTile<T extends TileEntry>(
+  custom: readonly T[],
+  key: string,
+  partyIds: readonly string[],
+  label: string,
+): readonly T[] {
+  return custom.some((entry) => entry.key === key)
+    ? custom.map((entry) =>
+        entry.key === key ? { ...entry, partyIds, label } : entry,
+      )
+    : custom;
+}
+
 /**
  * The coalition sets shown as tiles on the Coalitions view and as cards on
  * the future view: one store identity (`panel.tiles`, labels and custom sets).

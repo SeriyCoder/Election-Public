@@ -167,9 +167,11 @@ test.describe('coalition workspace', () => {
     await showView(page, 'coalitions');
     const workspace = page.locator('[data-coalition-workspace]');
     await expect(workspace).toBeVisible({ timeout: 5000 });
+    // M7-20: with only two parties the lock itself is refused with a hint.
     await workspace.locator('[data-lock="party:P2"]').click();
+    await expect(workspace.locator('[data-lock-hint]').first()).toBeVisible();
     const field = workspace.locator('[data-party-share-input="P1"]');
-    await field.fill('60');
+    await field.fill('101');
     await expect(workspace.locator('[data-party-edit-error]')).toBeVisible();
     await expect(workspace.locator('[data-party-seats="P1"]')).toHaveText('51');
     await page.locator('[data-action="export"]').click();
@@ -178,7 +180,7 @@ test.describe('coalition workspace', () => {
     expect((unchanged.parties as Json[])[0]!.voteShare).toEqual(
       fraction('1', '2'),
     );
-    await field.fill('101');
+    await field.fill('-1');
     await expect(workspace.locator('[data-party-edit-error]')).toBeVisible();
     await expect(workspace.locator('[data-party-seats="P1"]')).toHaveText('51');
   });

@@ -12,8 +12,8 @@
     "threshold": "0.0325",
     "allocationMethod": "hamilton",
     "overallTurnout": {
-      "numerator": "1560000",
-      "denominator": "2564959"
+      "numerator": "457938064406929020264000000",
+      "denominator": "594653238298147193869832683"
     },
     "validBallotRate": "0.999"
   },
@@ -24,8 +24,8 @@
       "notes": "",
       "growthRate": "0.0025",
       "turnout": {
-        "numerator": "1",
-        "denominator": "2"
+        "numerator": "309",
+        "denominator": "400"
       },
       "turnoutChange": "0"
     },
@@ -35,8 +35,8 @@
       "notes": "",
       "growthRate": "0.005",
       "turnout": {
-        "numerator": "3",
-        "denominator": "5"
+        "numerator": "313",
+        "denominator": "400"
       },
       "turnoutChange": "0"
     },
@@ -46,8 +46,8 @@
       "notes": "",
       "growthRate": "0.0075",
       "turnout": {
-        "numerator": "13",
-        "denominator": "20"
+        "numerator": "6879",
+        "denominator": "10000"
       },
       "turnoutChange": "0"
     },
@@ -57,8 +57,8 @@
       "notes": "",
       "growthRate": "0.01",
       "turnout": {
-        "numerator": "4",
-        "denominator": "5"
+        "numerator": "4031",
+        "denominator": "5000"
       },
       "turnoutChange": "0"
     },
@@ -68,8 +68,8 @@
       "notes": "",
       "growthRate": "0.015",
       "turnout": {
-        "numerator": "13",
-        "denominator": "20"
+        "numerator": "8001",
+        "denominator": "10000"
       },
       "turnoutChange": "0"
     },
@@ -79,8 +79,8 @@
       "notes": "",
       "growthRate": "0.025",
       "turnout": {
-        "numerator": "4",
-        "denominator": "5"
+        "numerator": "8003",
+        "denominator": "10000"
       },
       "turnoutChange": "0"
     },
@@ -90,8 +90,8 @@
       "notes": "",
       "growthRate": "0.005",
       "turnout": {
-        "numerator": "3",
-        "denominator": "5"
+        "numerator": "432",
+        "denominator": "625"
       },
       "turnoutChange": "0"
     }
@@ -106,25 +106,25 @@
       "tieBreakOrder": 1,
       "canJoinGovernment": true,
       "voteShare": {
-        "numerator": "19",
-        "denominator": "100"
+        "numerator": "437",
+        "denominator": "2000"
       },
       "composition": {
         "secular": {
-          "numerator": "3",
-          "denominator": "10"
+          "numerator": "39",
+          "denominator": "125"
         },
         "G2": {
-          "numerator": "39",
-          "denominator": "100"
+          "numerator": "3879",
+          "denominator": "10000"
         },
         "religious": {
-          "numerator": "3",
-          "denominator": "20"
+          "numerator": "733",
+          "denominator": "5000"
         },
         "G4": {
-          "numerator": "1",
-          "denominator": "10"
+          "numerator": "469",
+          "denominator": "5000"
         },
         "G5": {
           "numerator": "0",
@@ -135,8 +135,8 @@
           "denominator": "1"
         },
         "other": {
-          "numerator": "3",
-          "denominator": "50"
+          "numerator": "597",
+          "denominator": "10000"
         }
       }
     },
@@ -149,8 +149,8 @@
       "tieBreakOrder": 2,
       "canJoinGovernment": true,
       "voteShare": {
-        "numerator": "3",
-        "denominator": "25"
+        "numerator": "147",
+        "denominator": "1000"
       },
       "composition": {
         "secular": {
@@ -192,8 +192,8 @@
       "tieBreakOrder": 3,
       "canJoinGovernment": true,
       "voteShare": {
-        "numerator": "19",
-        "denominator": "100"
+        "numerator": "2277",
+        "denominator": "10000"
       },
       "composition": {
         "secular": {
@@ -235,21 +235,21 @@
       "tieBreakOrder": 4,
       "canJoinGovernment": true,
       "voteShare": {
-        "numerator": "2",
-        "denominator": "25"
+        "numerator": "737",
+        "denominator": "10000"
       },
       "composition": {
         "secular": {
-          "numerator": "2",
-          "denominator": "25"
+          "numerator": "419",
+          "denominator": "5000"
         },
         "G2": {
-          "numerator": "1",
-          "denominator": "10"
+          "numerator": "201",
+          "denominator": "2000"
         },
         "religious": {
-          "numerator": "3",
-          "denominator": "4"
+          "numerator": "3729",
+          "denominator": "5000"
         },
         "G4": {
           "numerator": "0",
@@ -260,12 +260,12 @@
           "denominator": "100"
         },
         "haredi": {
-          "numerator": "1",
-          "denominator": "100"
+          "numerator": "6",
+          "denominator": "625"
         },
         "other": {
-          "numerator": "1",
-          "denominator": "20"
+          "numerator": "503",
+          "denominator": "10000"
         }
       }
     },
@@ -278,25 +278,25 @@
       "tieBreakOrder": 5,
       "canJoinGovernment": true,
       "voteShare": {
-        "numerator": "3",
-        "denominator": "50"
+        "numerator": "31",
+        "denominator": "500"
       },
       "composition": {
         "secular": {
-          "numerator": "3",
-          "denominator": "4"
+          "numerator": "383",
+          "denominator": "500"
         },
         "G2": {
-          "numerator": "1",
-          "denominator": "10"
+          "numerator": "241",
+          "denominator": "2500"
         },
         "religious": {
           "numerator": "0",
           "denominator": "1"
         },
         "G4": {
-          "numerator": "1",
-          "denominator": "10"
+          "numerator": "447",
+          "denominator": "5000"
         },
         "G5": {
           "numerator": "0",
@@ -307,8 +307,8 @@
           "denominator": "1"
         },
         "other": {
-          "numerator": "1",
-          "denominator": "20"
+          "numerator": "241",
+          "denominator": "5000"
         }
       }
     },
@@ -321,37 +321,37 @@
       "tieBreakOrder": 6,
       "canJoinGovernment": true,
       "voteShare": {
-        "numerator": "3",
-        "denominator": "25"
+        "numerator": "673",
+        "denominator": "10000"
       },
       "composition": {
         "secular": {
-          "numerator": "3",
-          "denominator": "5"
+          "numerator": "3053",
+          "denominator": "5000"
         },
         "G2": {
-          "numerator": "1",
-          "denominator": "5"
+          "numerator": "1953",
+          "denominator": "10000"
         },
         "religious": {
-          "numerator": "1",
-          "denominator": "20"
+          "numerator": "483",
+          "denominator": "10000"
         },
         "G4": {
           "numerator": "0",
           "denominator": "1"
         },
         "G5": {
-          "numerator": "1",
-          "denominator": "10"
+          "numerator": "97",
+          "denominator": "1000"
         },
         "haredi": {
           "numerator": "0",
           "denominator": "1"
         },
         "other": {
-          "numerator": "1",
-          "denominator": "20"
+          "numerator": "61",
+          "denominator": "1250"
         }
       }
     },
@@ -364,8 +364,8 @@
       "tieBreakOrder": 7,
       "canJoinGovernment": true,
       "voteShare": {
-        "numerator": "1",
-        "denominator": "10"
+        "numerator": "3",
+        "denominator": "50"
       },
       "composition": {
         "secular": {
@@ -407,13 +407,13 @@
       "tieBreakOrder": 8,
       "canJoinGovernment": true,
       "voteShare": {
-        "numerator": "7",
-        "denominator": "50"
+        "numerator": "719",
+        "denominator": "5000"
       },
       "composition": {
         "secular": {
-          "numerator": "1",
-          "denominator": "50"
+          "numerator": "111",
+          "denominator": "5000"
         },
         "G2": {
           "numerator": "0",
@@ -428,16 +428,16 @@
           "denominator": "1"
         },
         "G5": {
-          "numerator": "93",
-          "denominator": "100"
+          "numerator": "2319",
+          "denominator": "2500"
         },
         "haredi": {
           "numerator": "0",
           "denominator": "1"
         },
         "other": {
-          "numerator": "1",
-          "denominator": "20"
+          "numerator": "251",
+          "denominator": "5000"
         }
       }
     }

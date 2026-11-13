@@ -125,10 +125,21 @@ export async function back(page: Page) {
   await expect.poll(() => bookAt(page)).not.toBe(current);
 }
 
-/** Turns with Next until the first part of the given page is on screen. */
+/**
+ * One page block of the screen on view (M7-19): fields, choices and errors of
+ * pages stacked on one screen are scoped through it.
+ */
+export function bookPage(page: Page, key: string) {
+  return page.locator(`[data-book] [data-book-page="${key}"]`);
+}
+
+/** Turns with Next until the screen holding the given page is on view. */
 export async function nextTo(page: Page, key: string) {
   for (let turns = 0; turns < 120; turns += 1) {
-    if ((await book(page).getAttribute('data-page')) === key) {
+    if (
+      (await book(page).getAttribute('data-page')) === key ||
+      (await bookPage(page, key).count()) > 0
+    ) {
       return;
     }
     await next(page);

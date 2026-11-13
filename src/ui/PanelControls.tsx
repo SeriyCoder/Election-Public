@@ -45,6 +45,7 @@ import { groupColorOf } from './groupColors';
 import { CoalitionTiles } from './CoalitionTiles';
 import type { CoalitionRun } from './coalitionRunner';
 import { DirectedRelations } from './DirectedRelations';
+import { canLockAnother, defaultLocks } from './book';
 
 export function PanelModal({
   title,
@@ -452,7 +453,21 @@ export function SupporterControls({
   const basis =
     state.panel.experiment ??
     (checked.ok ? freezeSupporters(checked.scenario) : null);
-  if (basis === null) return <RepairLink action="align" t={t} />;
+  if (basis === null)
+    return (
+      <div class="note ws-suspended" data-supporter-align>
+        <p>{t('panel.unbalancedNote')}</p>
+        <button
+          type="button"
+          class="ws-align"
+          data-attention="true"
+          data-action="supporter-align"
+          onClick={() => store.alignPartyShares()}
+        >
+          {t('panel.autoAlign')}
+        </button>
+      </div>
+    );
   if ('kind' in basis)
     return basis.reason === 'suspended-model' ? (
       <SuspendedRepair store={store} t={t} />
@@ -463,6 +478,14 @@ export function SupporterControls({
   const future = runSupporters(basis, state.panel.targets, state.futureYear);
   const display = (text: string | null) =>
     text === null ? '—' : formatDecimal(state.language, panelDisplay(text));
+  // The computed overall turnout, frozen base → under the current targets.
+  const overall = (
+    <p class="ws-hint" data-supporter-overall>
+      {t('panel.overallTurnout')}:{' '}
+      {display(fractionToPercent(basis.source.rules.overallTurnout))}% →{' '}
+      {display(panelPercent(result.result.votes.turnout))}%
+    </p>
+  );
   const otherInvalid = state.panel.invalidFields.some(
     (field) =>
       !field.startsWith('data-supporter-target:') &&
@@ -487,6 +510,7 @@ export function SupporterControls({
             {t('panel.resetTurnout')}
           </button>
         </div>
+        {overall}
         <div
           class="ws-cards"
           style={{ '--party-count': basis.source.parties.length }}
@@ -589,6 +613,7 @@ export function SupporterControls({
           </button>
         )}
       </div>
+      {overall}
       {basis.source.parties.map((party, p) => {
         const now = result.partyTurnouts[p];
         const nowText = now == null ? null : panelPercent(now);
@@ -972,15 +997,70 @@ export function IntegratedPanel({
   const state = store.getState();
   const data = readPanel(state.input);
   const [selected, setSelected] = useState('');
-  const [cellLocks, setCellLocks] = useState<readonly string[]>([]);
-  const [voteLocks, setVoteLocks] = useState<readonly string[]>([]);
+  const defaultVoteLocks = (panel: PanelData | null): readonly string[] =>
+    panel === null
+      ? []
+      : defaultLocks(panel.shares.map((share) => panelPercent(share))).map(
+          (at) => panel.partyIds[at]!,
+        );
+  const defaultCellLocks = (panel: PanelData | null): readonly string[] =>
+    panel === null
+      ? []
+      : panel.partyIds.flatMap((id, p) => {
+          const row = panel.compositions[p];
+          return row == null
+            ? []
+            : defaultLocks(row.map((cell) => panelPercent(cell))).map(
+                (g) => `${id}:${panel.groupIds[g]!}`,
+              );
+        });
+  const voteLocks = state.panel.voteLocks ?? defaultVoteLocks(data);
+  const cellLocks = state.panel.cellLocks ?? defaultCellLocks(data);
+  const [lockHint, setLockHint] = useState(false);
+  const toggleVoteLock = (id: string) => {
+    const locking = !voteLocks.includes(id);
+    if (
+      locking &&
+      data !== null &&
+      !canLockAnother(data.partyIds.length, voteLocks.length)
+    ) {
+      setLockHint(true);
+      return;
+    }
+    setLockHint(false);
+    store.setPanelSession({
+      voteLocks: locking
+        ? [...voteLocks, id]
+        : voteLocks.filter((lock) => lock !== id),
+    });
+  };
+  const toggleCellLock = (partyId: string, groupId: string) => {
+    const key = `${partyId}:${groupId}`;
+    const locking = !cellLocks.includes(key);
+    const rowLocked = cellLocks.filter((lock) =>
+      lock.startsWith(`${partyId}:`),
+    ).length;
+    if (
+      locking &&
+      data !== null &&
+      !canLockAnother(data.groupIds.length, rowLocked)
+    ) {
+      setLockHint(true);
+      return;
+    }
+    setLockHint(false);
+    store.setPanelSession({
+      cellLocks: locking
+        ? [...cellLocks, key]
+        : cellLocks.filter((lock) => lock !== key),
+    });
+  };
   const [undo, setUndo] = useState<PanelData | null>(null);
   const [previous, setPrevious] = useState<PanelData | null>(null);
   const [message, setMessage] = useState('');
   const [correction, setCorrection] = useState(false);
   useEffect(() => {
-    setCellLocks([]);
-    setVoteLocks([]);
+    setLockHint(false);
     setUndo(null);
     setPrevious(null);
     setMessage('');
@@ -1140,17 +1220,16 @@ export function IntegratedPanel({
                         locked={voteLocks.includes(item.id)}
                         label={`${t('panel.lock')}: ${entityName('party', item, t)}`}
                         marker={{ 'data-lock-vote': item.id }}
-                        onToggle={() =>
-                          setVoteLocks(
-                            voteLocks.includes(item.id)
-                              ? voteLocks.filter((id) => id !== item.id)
-                              : [...voteLocks, item.id],
-                          )
-                        }
+                        onToggle={() => toggleVoteLock(item.id)}
                       />
                     </div>
                   ))}
                 </div>
+                {lockHint && (
+                  <p class="ws-lock-hint" role="status" data-lock-hint>
+                    {t('panel.minUnlocked')}
+                  </p>
+                )}
                 <Legend t={t} />
               </div>
             </PanelBox>
@@ -1311,13 +1390,7 @@ export function IntegratedPanel({
                         locked={cellLocks.includes(key)}
                         label={`${t('panel.lock')}: ${entityName('group', group, t)}`}
                         marker={{ 'data-lock-cell': key }}
-                        onToggle={() =>
-                          setCellLocks(
-                            cellLocks.includes(key)
-                              ? cellLocks.filter((id) => id !== key)
-                              : [...cellLocks, key],
-                          )
-                        }
+                        onToggle={() => toggleCellLock(party.id, group.id)}
                       />
                     </div>
                     <small class="ws-shift">
@@ -1376,6 +1449,11 @@ export function IntegratedPanel({
               })}
             </div>
             {row === null && <p class="note">{t('panel.unknown')}</p>}
+            {lockHint && (
+              <p class="ws-lock-hint" role="status" data-lock-hint>
+                {t('panel.minUnlocked')}
+              </p>
+            )}
             <p class="ws-hint">{t('panel.populationLegend')}</p>
           </div>
         </PanelBox>

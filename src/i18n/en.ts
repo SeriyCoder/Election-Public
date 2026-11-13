@@ -79,7 +79,16 @@ export const en = {
   'panel.next': 'Next party',
   'panel.populationNote':
     'Population inferred from votes, composition and turnout is a scenario assumption, not evidence about real voters.',
-  'panel.tiles': 'Coalition tiles',
+  'panel.tiles': 'Possible Coalitions',
+  'panel.tilesHint':
+    'Tick up to 4 options and check whether they survive sector growth and turnout shifts',
+  'panel.openSimulator': 'Open the Coalition Simulator →',
+  'panel.inCoalition': 'In the coalition',
+  'panel.outCoalition': 'Outside the coalition',
+  'panel.minUnlocked': 'At least two positions must stay unlocked.',
+  'panel.autoAlign': 'Align automatically',
+  'panel.unbalancedNote':
+    'Party shares do not add up to 100%, so supporter turnout is unavailable. Align automatically or fix the shares in the party votes block.',
   'panel.nearest': 'Nearest',
   'panel.add': '+ Add',
   'panel.remove': 'Remove tile',
@@ -87,6 +96,7 @@ export const en = {
   'panel.variantCount': 'Compatible variants: {count}',
   'panel.incomplete': 'Bounded search: the list may be incomplete',
   'panel.custom': '+ Build your own…',
+  'panel.editTile': 'Edit members',
   'panel.own': 'Custom',
   'panel.suspended':
     'The group model is switched off: after your edit of votes, composition or turnout, the saved linked model (for example from the Data tab) no longer matches the numbers. Supporter turnout and the projection are unavailable. Press the button below to rebuild the model from the current votes, compositions and group turnout; the shares you entered do not change.',
@@ -143,8 +153,8 @@ export const en = {
   'panel.growthHint':
     'Growth per year, % · share on the right: today → chosen year',
   'panel.sameCoalitions': 'The same coalitions over the years',
-  'panel.sameNote':
-    'Year 0 on the left is frozen. Only group sizes change; turnout and preferences within groups stay constant.',
+  'panel.futureBanner':
+    'Demographics and turnout are the two main factors we have to live with. Move the year slider or change turnout on the left to see how the chosen coalitions on the right lose or gain a majority (61 seats) in the future.',
   'panel.coefLegend': '−1: no one · 0: as in the base · +1: everyone',
   'panel.resetTurnout': 'Reset turnout',
   'panel.coefficient': 'Turnout coefficient',
@@ -170,8 +180,12 @@ export const en = {
   'panel.removeCard': 'Nothing — remove the card',
   'panel.originalToday': 'Original · today',
   'panel.inYears': 'In {years}',
-  'panel.newToday': 'New turnout · today',
-  'panel.newFuture': 'New turnout · in {years}',
+  'panel.newToday': 'New supporter turnout · today',
+  'panel.newFuture': 'New turnout + demographics · in {years}',
+  'panel.snapshotToday':
+    'Party supporters’ turnout has been changed — this is the turnout simulation result.',
+  'panel.snapshotFuture':
+    'The new turnout and the demographic shift over the chosen years apply together.',
   'panel.experimentChoice': 'One coalition for the experiment',
   'panel.experimentSplit':
     'Turnout: {turnout} seats; then demography: {demography} seats.',
@@ -1087,12 +1101,30 @@ export const en = {
   'book.back': 'Back',
   'book.next': 'Next',
   'book.skip': 'Skip the questionnaire',
+  'purpose.goal':
+    'Election outcomes are largely set by *demographics* and sector *turnout*. The simulation aims to show which coalitions are possible under the current demographic balance and how the picture changes over time.',
+  'purpose.hypothesis.title': 'Hypothesis for discussion',
+  'purpose.hypothesis.text':
+    'Without a union of the *two large secular parties* — right-wing and centrist — it is hard to form a government that depends neither on religious nor on Arab parties. In the demographic future the task gets harder still: shared values are needed.',
+  'purpose.workspace':
+    'Change shares and turnout on the left — seats and the *majority* are recalculated immediately. "Coalition simulations" shows how the chosen coalitions fare in the future.',
+  'purpose.note':
+    'The simulator computes seats and the cooperation you set; it draws no political conclusions.',
+  'book.example.about.religiousZionism':
+    'Parties that represent, among others, settlers and communities beyond the Green Line',
+  'book.example.about.nationalCamp': 'Centrist, secular, market-oriented camp',
+  'book.example.about.left': 'Secular left, social-democratic',
+  'book.example.about.beiteinu':
+    'Secular right-wing party; a major share of its voters are Russian-speaking secular immigrants and their children',
+  'book.example.about.arabs':
+    'A group of Arab parties, religious and secular; their voters are mostly Arab citizens of Israel',
   'book.start.label': 'Where to start',
   'book.start.blank.title': 'From scratch',
   'book.start.blank.text':
     'An empty questionnaire: you set the parties, groups and percentages.',
   'book.start.begin': 'Start the questionnaire',
   'book.start.eight.title': '8 parties (free names)',
+  'book.start.eight.fill': 'Fill Out Questionnaire (8 Parties)',
   'book.start.eight.text':
     'Eight lists, seven groups, turnout, growth and coalition refusals already filled in.',
   'book.start.israel.title': '2022 (educational)',

@@ -1,4 +1,4 @@
-# Election-Public
+﻿# Election-Public
 
 Offline-first educational simulator of Israeli elections, turnout, seat allocation, and coalitions. Not an election forecast.
 
@@ -9,11 +9,11 @@ inference about real voters from demographic labels.
 
 ## Status
 
-The offline application is built locally as `dist/elections.html`. The planned
-GitHub Pages address is
-<https://seriycoder.github.io/Election-Public/>; it is not claimed to
-be live. The interface translations have not completed their publication
-review, and the simulator is not legally certified.
+The offline application is built locally as `dist/elections.html`. The public
+preview is live at <https://seriycoder.github.io/Election-Public/>, deployed
+from a sanitized source snapshot in the public repository
+`SeriyCoder/Election-Public`. The interface translations have not completed
+their publication review, and the simulator is not legally certified.
 
 ## Local development
 
@@ -44,14 +44,11 @@ a server.
 
 ## Source publication and Pages releases
 
-The approved publication plan is to release the source under the MIT License.
-Before the first public push, verify and retain the repository's MIT license
-file. The release uses a sanitized source snapshot committed on top of the
-existing public `main`; it does not upload the private development history.
-Pushing the source does not publish the site. Pages is released separately
-only by manually dispatching the branch-restricted workflow from `main`, after
-its validation and build checks pass. Do not treat the planned URL as live
-until the first release has been verified.
+The source is released under the MIT License as a sanitized snapshot in the
+public `Election-Public` repository; the local development history is not
+uploaded. Pushing the source does not publish the site. Pages is released
+separately only by manually dispatching the branch-restricted workflow from
+`main`, after its validation and build checks pass.
 
 The user approved releasing this non-commercial MVP before the full English
 and Hebrew wording review. Those translations have not received that complete

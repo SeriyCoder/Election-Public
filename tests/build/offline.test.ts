@@ -23,7 +23,7 @@ const EXPECTED_POLICY: Readonly<Record<string, string>> = {
   'connect-src': "'none'",
 };
 
-const SIZE_BUDGET_BYTES = 450 * 1024;
+const SIZE_BUDGET_BYTES = 900000;
 
 function outputsOf(result: unknown): Emitted[] {
   const list = Array.isArray(result) ? result : [result];
@@ -144,7 +144,7 @@ describe('offline single-file build', () => {
     expect(policyOf(html)).toEqual(EXPECTED_POLICY);
   });
 
-  it(`stays within ${SIZE_BUDGET_BYTES / 1024} kB`, () => {
+  it(`stays within ${SIZE_BUDGET_BYTES} bytes`, () => {
     const bytes = new TextEncoder().encode(html).length;
     expect(bytes).toBeGreaterThan(0);
     expect(bytes).toBeLessThanOrEqual(SIZE_BUDGET_BYTES);

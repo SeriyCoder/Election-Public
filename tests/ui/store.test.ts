@@ -42,7 +42,7 @@ import {
   EMPTY_BOOK,
   isSuggested,
   partCount,
-  reviewParts,
+  screenOf,
   shownTexts,
   type PageKey,
 } from '../../src/ui/book';
@@ -875,7 +875,7 @@ describe('Israeli educational example', () => {
     });
   });
 
-  it('has the six example groups with their shares and 70% turnout', () => {
+  it('has the six example groups with their shares, haredi turnout 85% and 70% for the others', () => {
     const groups = presetInput('israelExample').groups as Json[];
     expect(groups.map((group) => group.id)).toEqual([...EXAMPLE_GROUPS]);
     for (const group of groups) {
@@ -885,7 +885,8 @@ describe('Israeli educational example', () => {
         name: '',
         populationShare: EXAMPLE_TABLE[id][0],
         growthRate: '0',
-        turnout: '0.7',
+        // M7-19 memo point 5: haredi turnout 85%, the others 70%.
+        turnout: id === 'haredi' ? '0.85' : '0.7',
         turnoutChange: '0',
         validBallotRate: '0.999',
         participationFactor: '1',
@@ -961,16 +962,17 @@ describe('Israeli educational example', () => {
     });
   });
 
-  it('gives 700 000 ballots, 699 300 valid, split as the table implies', () => {
+  it('gives 716 500 ballots, 715 783.5 valid, split as the table and the turnout imply', () => {
     const validation = validateScenario(presetInput('israelExample'));
     if (!validation.ok) {
       throw new Error('expected a valid scenario');
     }
     const { votes, threshold } = runSeats(validation.scenario);
-    expect(compare(votes.totals.cast, rational(700000n))).toBe(0);
-    expect(compare(votes.allValidVotes, rational(699300n))).toBe(0);
+    // 700 000 at 70% everywhere plus 110 000 haredi voters at 15 more points.
+    expect(compare(votes.totals.cast, rational(716500n))).toBe(0);
+    expect(compare(votes.allValidVotes, rational(1431567n, 2n))).toBe(0);
     // The table's votes at 100% validity, then 0.1% of every ballot invalid.
-    const expected = [179235n, 173355n, 67865n, 83650n, 104545n, 91350n];
+    const expected = [180885n, 174180n, 67865n, 86125n, 116095n, 91350n];
     expect(votes.parties.map((party) => party.partyId)).toEqual([
       ...EXAMPLE_PARTIES,
     ]);
@@ -985,9 +987,9 @@ describe('Israeli educational example', () => {
     );
   });
 
-  it('allocates 31 / 30 / 11 / 14 / 18 / 16 with no cut-off tie', () => {
+  it('allocates 30 / 29 / 11 / 15 / 20 / 15 with no cut-off tie', () => {
     const store = createStore({ input: presetInput('israelExample') });
-    expect(seats(store)).toEqual([31, 30, 11, 14, 18, 16]);
+    expect(seats(store)).toEqual([30, 29, 11, 15, 20, 15]);
     expect(store.getDerived().result?.allocation.cutoffTie).toBe(false);
   });
 
@@ -995,7 +997,7 @@ describe('Israeli educational example', () => {
     const store = createStore();
     store.loadPreset('israelExample');
     expect(store.getState().input).toEqual(presetInput('israelExample'));
-    expect(seats(store)).toEqual([31, 30, 11, 14, 18, 16]);
+    expect(seats(store)).toEqual([30, 29, 11, 15, 20, 15]);
   });
 
   it('keeps the catalog IDs and the seats through export and import', () => {
@@ -1013,7 +1015,7 @@ describe('Israeli educational example', () => {
     expect((input.parties as Json[]).map((party) => party.id)).toEqual([
       ...EXAMPLE_PARTIES,
     ]);
-    expect(seats(store)).toEqual([31, 30, 11, 14, 18, 16]);
+    expect(seats(store)).toEqual([30, 29, 11, 15, 20, 15]);
   });
 });
 
@@ -1810,25 +1812,53 @@ const LONG_NAMES: BookAnswers = {
   'parties.naming': ['own'],
 };
 
-/** Types the given answers and turns pages with Next until the page shows. */
+/** The pages of the screen on show (M7-19). */
+function shownScreen(
+  store: ReturnType<typeof createStore>,
+): readonly PageKey[] {
+  const { draft, page } = store.getState().book;
+  return screenOf(draft, page);
+}
+
+/**
+ * Types the answers of the screen's pages, up to `until` when given; a typed
+ * answer can add pages to the screen, so the screen is read again each time.
+ */
+function typeScreen(
+  store: ReturnType<typeof createStore>,
+  answers: BookAnswers,
+  until?: PageKey,
+): void {
+  for (let at = 0; at < shownScreen(store).length; at += 1) {
+    const page = shownScreen(store)[at]!;
+    if (page === until) return;
+    (answers[page] ?? []).forEach((text, index) => {
+      if (text !== null) {
+        store.answerBook(index, text, page);
+      }
+    });
+  }
+}
+
+/**
+ * Types the given answers and turns screens with Next until the screen holding
+ * the page shows; on that screen only the pages before it are typed.
+ */
 function turnBook(
   store: ReturnType<typeof createStore>,
   answers: BookAnswers,
   until: PageKey = 'review',
 ): void {
   let guard = 0;
-  while (store.getState().book.page !== until) {
+  while (!shownScreen(store).includes(until)) {
     const page = store.getState().book.page;
-    (answers[page] ?? []).forEach((text, index) => {
-      if (text !== null) {
-        store.answerBook(index, text);
-      }
-    });
+    typeScreen(store, answers);
     if (guard > 200 || !store.bookNext()) {
       throw new Error(`stuck at ${page}`);
     }
     guard += 1;
   }
+  typeScreen(store, answers, until);
 }
 
 function bookStore(): ReturnType<typeof createStore> {
@@ -1906,16 +1936,23 @@ describe('questionnaire navigation', () => {
     expect(shownTexts(store.getState().book.draft, 'parties.count')).toEqual([
       '5',
     ]);
+    // M7-19: the count and the naming share a screen and are confirmed together.
     expect(store.bookNext()).toBe(true);
-    expect(store.getState().book.page).toBe('parties.naming');
-    expect(store.getState().book.answered).toEqual(['parties.count']);
+    expect(store.getState().book.page).toBe('parties.names');
+    expect(store.getState().book.answered).toEqual([
+      'parties.count',
+      'parties.naming',
+    ]);
     expect(listener).toHaveBeenCalledTimes(3);
   });
 
   it('confirms a suggestion left as it is', () => {
     const store = bookStore();
-    turnBook(store, {}, 'parties.naming');
-    expect(store.getState().book.answered).toEqual(['parties.count']);
+    turnBook(store, {}, 'parties.names');
+    expect(store.getState().book.answered).toEqual([
+      'parties.count',
+      'parties.naming',
+    ]);
     expect(isSuggested(store.getState().book.draft, 'parties.count')).toBe(
       false,
     );
@@ -1957,8 +1994,10 @@ describe('questionnaire navigation', () => {
     expect(store.getState().book.page).toBe('intro');
     store.bookGoTo('review');
     expect(store.getState().book.page).toBe('review');
-    store.bookGoTo('people.set');
-    store.answerBook(0, 'own');
+    // M7-19: a page opens the first page of the screen that holds it.
+    store.bookGoTo('people.about');
+    expect(store.getState().book.page).toBe('people.set');
+    store.answerBook(0, 'own', 'people.set');
     expect(store.bookNext()).toBe(true);
     // M7-15: one compose page; the per-party and choice pages are gone.
     for (const gone of ['compose.mode', 'compose.known.3', 'compose.3']) {
@@ -1966,7 +2005,8 @@ describe('questionnaire navigation', () => {
       expect(store.getState().book.page).not.toBe(gone);
     }
     store.bookGoTo('compose');
-    expect(store.getState().book.page).toBe('compose');
+    expect(store.getState().book.page).toBe('turnout');
+    expect(shownScreen(store)).toContain('compose');
   });
 
   it('opens the facts page over the current page and returns to it', () => {
@@ -1985,7 +2025,7 @@ describe('questionnaire navigation', () => {
   it('asks before the six-list set changes the party count', () => {
     const store = bookStore();
     turnBook(store, {}, 'parties.naming');
-    store.answerBook(0, 'example');
+    store.answerBook(0, 'example', 'parties.naming');
     expect(store.getState().book.confirm).toBe('example-count');
     expect(shownTexts(store.getState().book.draft, 'parties.naming')).toEqual([
       'catalog',
@@ -1995,11 +2035,12 @@ describe('questionnaire navigation', () => {
     expect(isSuggested(store.getState().book.draft, 'parties.naming')).toBe(
       true,
     );
-    store.answerBook(0, 'example');
+    store.answerBook(0, 'example', 'parties.naming');
     store.confirmBook();
     const { book } = store.getState();
     expect(book.confirm).toBeNull();
-    expect(book.page).toBe('parties.naming');
+    // M7-19: the screen opens on the count, with the naming beside it.
+    expect(book.page).toBe('parties.count');
     expect(shownTexts(book.draft, 'parties.count')).toEqual(['6']);
     expect(shownTexts(book.draft, 'parties.naming')).toEqual(['example']);
     expect(book.answered).toContain('parties.count');
@@ -2008,7 +2049,7 @@ describe('questionnaire navigation', () => {
   it('takes the six-list set without asking when six parties are chosen', () => {
     const store = bookStore();
     turnBook(store, { 'parties.count': ['6'] }, 'parties.naming');
-    store.answerBook(0, 'example');
+    store.answerBook(0, 'example', 'parties.naming');
     expect(store.getState().book.confirm).toBeNull();
     expect(shownTexts(store.getState().book.draft, 'parties.naming')).toEqual([
       'example',
@@ -2042,10 +2083,13 @@ describe('questionnaire parts', () => {
     expect(partCount(draft, 'votes.shares')).toBe(1);
     expect(partCount(draft, 'compose')).toBe(1);
     expect(partCount(draft, 'votes.check')).toBe(1);
+    // M7-19: turnout, vote shares and compositions share one screen.
+    expect(shownScreen(store)).toEqual(['turnout', 'votes.shares', 'compose']);
     expect(store.bookNext()).toBe(true);
-    // M7-15: no choice pages before the single composition page.
-    expect(at(store)).toBe('compose#0');
-    expect(store.getState().book.answered).toContain('votes.shares');
+    expect(at(store)).toBe('votes.check#0');
+    for (const page of ['turnout', 'votes.shares', 'compose']) {
+      expect(store.getState().book.answered).toContain(page);
+    }
   });
 
   it('walks the parts of a dense page before turning it', () => {
@@ -2057,7 +2101,7 @@ describe('questionnaire parts', () => {
     expect(at(store)).toBe('parties.names#1');
     expect(store.getState().book.answered).not.toContain('parties.names');
     expect(store.bookNext()).toBe(true);
-    expect(at(store)).toBe('people.about#0');
+    expect(at(store)).toBe('people.set#0');
     expect(store.getState().book.answered).toContain('parties.names');
   });
 
@@ -2086,12 +2130,13 @@ describe('questionnaire parts', () => {
     expect(at(store)).toBe('parties.names#1');
     expect(store.getState().book.attempted).toBe(false);
     turnBook(store, LONG_GROUPS, 'compose');
-    store.answerBook(1, '120');
+    // M7-19: the compose page sits on the turnout screen.
+    store.answerBook(1, '120', 'compose');
     expect(store.bookNext()).toBe(false);
-    expect(at(store)).toBe('compose#0');
-    store.answerBook(1, '30');
+    expect(at(store)).toBe('turnout#0');
+    store.answerBook(1, '30', 'compose');
     expect(store.bookNext()).toBe(false);
-    expect(at(store)).toBe('compose#0');
+    expect(at(store)).toBe('turnout#0');
     expect(store.getState().book.attempted).toBe(true);
     expect(store.getState().book.answered).not.toContain('compose');
   });
@@ -2115,7 +2160,8 @@ describe('questionnaire parts', () => {
     store.bookBack();
     expect(at(store)).toBe('parties.names#0');
     store.bookBack();
-    expect(at(store)).toBe('parties.naming#0');
+    // M7-19: the naming shares its screen with the count.
+    expect(at(store)).toBe('parties.count#0');
   });
 
   it('lands on the first part when going to a page or starting again', () => {
@@ -2142,7 +2188,7 @@ describe('questionnaire parts', () => {
     expect(store.getState().book.facts).toBe(false);
   });
 
-  it('walks the review parts, then stops for the build', () => {
+  it('shows the review on one screen, then stops for the build (M7-19)', () => {
     const store = bookStore();
     const long = (n: number) =>
       `Партия номер ${n} ${'с длинным названием '.repeat(3)}`.slice(0, 60);
@@ -2153,17 +2199,13 @@ describe('questionnaire parts', () => {
         long(n),
       ]),
     });
-    const parts = reviewParts(store.getState().book.draft).length;
-    expect(parts).toBeGreaterThan(1);
+    expect(partCount(store.getState().book.draft, 'review')).toBe(1);
     expect(at(store)).toBe('review#0');
-    for (let part = 1; part < parts; part += 1) {
-      expect(store.bookNext()).toBe(true);
-      expect(at(store)).toBe(`review#${part}`);
-    }
     expect(store.bookNext()).toBe(false);
-    expect(at(store)).toBe(`review#${parts - 1}`);
+    expect(at(store)).toBe('review#0');
     store.bookBack();
-    expect(at(store)).toBe(`review#${parts - 2}`);
+    expect(at(store)).toBe('coalitions#0');
+    store.bookGoTo('review');
     store.buildBook();
     expect(store.getState().screen).toBe('app');
     expect(store.getState().view).toBe('coalitions');
@@ -2172,8 +2214,10 @@ describe('questionnaire parts', () => {
   it('skips from the compose page with the whole page', () => {
     const store = bookStore();
     turnBook(store, LONG_GROUPS, 'compose');
-    store.answerBook(0, '100');
-    [1, 2, 3, 4, 5, 6, 7].forEach((index) => store.answerBook(index, '0'));
+    store.answerBook(0, '100', 'compose');
+    [1, 2, 3, 4, 5, 6, 7].forEach((index) =>
+      store.answerBook(index, '0', 'compose'),
+    );
     store.skipBook();
     const parties = (store.getState().input as { parties: Json[] }).parties;
     // Likud draws all of group 1; M7-15: other parties keep the even split.
@@ -2191,35 +2235,38 @@ describe('questionnaire lessons and names', () => {
     return `${page}#${part}`;
   };
 
-  it('turns through both lessons with Next and Back without answering them', () => {
+  it('turns past both lessons with Next and Back without answering them (M7-19)', () => {
     const store = bookStore();
     turnBook(store, {}, 'people.about');
-    const draft = store.getState().book.draft;
     expect(store.getState().book.answered).toEqual([
       'parties.count',
       'parties.naming',
       'parties.names',
     ]);
-    expect(store.bookNext()).toBe(true);
-    expect(at(store)).toBe('people.mix#0');
-    expect(store.bookNext()).toBe(true);
+    // M7-20: the group question opens the screen; the lessons follow it.
     expect(at(store)).toBe('people.set#0');
+    expect(shownScreen(store)).toEqual([
+      'people.set',
+      'people.about',
+      'people.mix',
+    ]);
+    expect(store.bookNext()).toBe(true);
+    expect(at(store)).toBe('turnout#0');
+    expect(store.getState().book.answered).toContain('people.set');
     expect(store.getState().book.answered).not.toContain('people.about');
     expect(store.getState().book.answered).not.toContain('people.mix');
-    expect(store.getState().book.draft).toBe(draft);
     store.bookBack();
-    expect(at(store)).toBe('people.mix#0');
-    store.bookBack();
-    expect(at(store)).toBe('people.about#0');
+    expect(at(store)).toBe('people.set#0');
     store.bookBack();
     expect(at(store)).toBe('parties.names#0');
   });
 
   it('ignores typing on a lesson', () => {
     const store = bookStore();
-    turnBook(store, {}, 'people.mix');
+    turnBook(store, {}, 'people.about');
     const book = store.getState().book;
-    store.answerBook(0, '5');
+    store.answerBook(0, '5', 'people.about');
+    store.answerBook(0, '5', 'people.mix');
     expect(store.getState().book.draft).toBe(book.draft);
     expect(store.getState().book.confirm).toBeNull();
   });
@@ -2235,7 +2282,8 @@ describe('questionnaire lessons and names', () => {
     expect(untouched.getState().book.answered).toEqual([]);
 
     const store = bookStore();
-    turnBook(store, SIX_LISTS, 'people.mix');
+    // M7-20: stop at the question so the lessons' screen stays untyped.
+    turnBook(store, SIX_LISTS, 'people.set');
     const expected = buildFromAnswers(store.getState().book.draft, [
       'parties.count',
       'parties.naming',
@@ -2260,7 +2308,7 @@ describe('questionnaire lessons and names', () => {
     expect(at(store)).toBe('parties.names#1');
     expect(store.getState().book.answered).not.toContain('parties.names');
     expect(store.bookNext()).toBe(true);
-    expect(at(store)).toBe('people.about#0');
+    expect(at(store)).toBe('people.set#0');
     expect(store.getState().book.answered).toContain('parties.names');
   });
 
@@ -2316,7 +2364,8 @@ describe('questionnaire lessons and names', () => {
       turnBook(store, answers);
       store.buildBook();
       expect(store.getState().autoFilled, language).toEqual([]);
-      expect(seats(store), language).toEqual([31, 30, 11, 14, 18, 16]);
+      // M7-19: the example follows the ultra-Orthodox turnout of 85.
+      expect(seats(store), language).toEqual([30, 29, 11, 15, 20, 15]);
       return store.getState().input;
     });
     const preset = presetInput('israelExample');
@@ -2336,7 +2385,8 @@ describe('questionnaire lessons and names', () => {
       expect(built.groups.map((each) => each.id)).toContain(group.id);
     }
     expect((inputs[0] as Json).rules).toMatchObject({
-      overallTurnout: { numerator: '7', denominator: '10' },
+      // M7-19: derived exactly from the per-group turnout.
+      overallTurnout: { numerator: '119000000', denominator: '166080371' },
     });
     expect(inputs[1]).toEqual(inputs[0]);
     expect(inputs[2]).toEqual(inputs[0]);
@@ -2376,7 +2426,8 @@ describe('questionnaire skip', () => {
       entity: null,
     });
     expect(state.coalitionSelection).toEqual([]);
-    expect(seats(store)).toEqual([31, 30, 11, 14, 18, 16]);
+    // M7-19: the example follows the ultra-Orthodox turnout of 85.
+    expect(seats(store)).toEqual([30, 29, 11, 15, 20, 15]);
   });
 
   it('keeps a valid value typed on the current page', () => {
@@ -2395,7 +2446,7 @@ describe('questionnaire skip', () => {
   it('drops an invalid value typed on the current page', () => {
     const store = bookStore();
     turnBook(store, { 'parties.count': ['5'] }, 'parties.naming');
-    store.answerBook(0, 'nonsense');
+    store.answerBook(0, 'nonsense', 'parties.naming');
     store.skipBook();
     const state = store.getState();
     expect((state.input as { parties: unknown[] }).parties).toHaveLength(5);
@@ -2451,7 +2502,8 @@ describe('questionnaire build', () => {
     expect(state.autoFilled).toEqual([]);
     expect(state.locks).toEqual([]);
     expect(state.baseline).toBeNull();
-    expect(seats(store)).toEqual([31, 30, 11, 14, 18, 16]);
+    // M7-19: the example follows the ultra-Orthodox turnout of 85.
+    expect(seats(store)).toEqual([30, 29, 11, 15, 20, 15]);
     expect(store.getDerived().validation.ok).toBe(true);
   });
 
@@ -2494,7 +2546,8 @@ describe('questionnaire build', () => {
     expect(store.getState().input).toBe(input);
     store.confirmBook();
     expect(store.getState().view).toBe('coalitions');
-    expect(seats(store)).toEqual([31, 30, 11, 14, 18, 16]);
+    // M7-19: the example follows the ultra-Orthodox turnout of 85.
+    expect(seats(store)).toEqual([30, 29, 11, 15, 20, 15]);
   });
 
   it('builds the same scenario under every language', () => {

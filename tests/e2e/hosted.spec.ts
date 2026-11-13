@@ -7,7 +7,7 @@ import { parseScenarioJson, serializeScenario } from '../../src/engine/schema';
 
 const folder = new URL('../../dist-hosted/', import.meta.url);
 const offline = new URL('../../dist/elections.html', import.meta.url).href;
-const PREFIX = '/Election-Public/';
+const PREFIX = '/Israel-Election-Simulator/';
 const notices = {
   ru: 'Учебная математическая модель, а не прогноз выборов. Расчёты выполняются только в вашем браузере.',
   en: 'An educational mathematical model, not an election forecast. Everything is calculated in your browser only.',

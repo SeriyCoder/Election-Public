@@ -2006,6 +2006,11 @@ export function Editor({ store, t }: EditorProps) {
   return (
     <div class="editor">
       <IssueList validation={validation} t={t} />
+      {state.lockNotice && (
+        <p class="ws-lock-hint" role="status" data-lock-hint>
+          {t('panel.minUnlocked')}
+        </p>
+      )}
       <Pager pages={pages} index={index} draft={input} store={store} t={t} />
       <ScenarioFields
         draft={input}

@@ -8,7 +8,7 @@ import { entityName } from './names';
 import { PanelModal } from './PanelControls';
 import type { Store } from './store';
 import type { CoalitionRun } from './coalitionRunner';
-import { useTileSets } from './tileSets';
+import { replaceCustomTile, useTileSets } from './tileSets';
 
 export function CoalitionTiles({
   store,
@@ -29,6 +29,7 @@ export function CoalitionTiles({
   const [detail, setDetail] = useState<string | null>(null);
   const [custom, setCustom] = useState<readonly string[] | null>(null);
   const [customSlot, setCustomSlot] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const lastCount = useRef(candidates.total);
   const [countChange, setCountChange] = useState<readonly number[] | null>(
     null,
@@ -46,7 +47,8 @@ export function CoalitionTiles({
       t,
     );
   const detailEntry = entries.find((entry) => entry.key === detail);
-  const match = custom?.length ? existing(custom) : undefined;
+  const match =
+    custom?.length && editing === null ? existing(custom) : undefined;
   const matchShown = match !== undefined && tiles.includes(match.key);
   const report = detailEntry
     ? coalitionTileReport(scenario, result.allocation, detailEntry.partyIds)
@@ -111,6 +113,17 @@ export function CoalitionTiles({
           candidates.total > candidates.variants.length) &&
           ` — ${t('panel.incomplete')}`}
       </p>
+      <div class="ws-tiles-lead" data-tiles-lead>
+        <p class="ws-tiles-hint">{t('panel.tilesHint')}</p>
+        <button
+          type="button"
+          class="button button--cta"
+          data-action="open-simulator"
+          onClick={() => store.setView('future')}
+        >
+          {t('panel.openSimulator')}
+        </button>
+      </div>
       <ul class="ws-seat-legend">
         {scenario.parties
           .filter((party) =>
@@ -214,6 +227,22 @@ export function CoalitionTiles({
                 >
                   {session.favourites.includes(entry.key) ? '★' : '☆'}
                 </button>
+                {entry.key.startsWith('custom:') && (
+                  <button
+                    type="button"
+                    class="ws-icon"
+                    data-tile-edit={entry.key}
+                    aria-label={t('panel.editTile')}
+                    title={t('panel.editTile')}
+                    onClick={() => {
+                      setCustomSlot(null);
+                      setEditing(entry.key);
+                      setCustom(entry.partyIds);
+                    }}
+                  >
+                    ✎
+                  </button>
+                )}
                 <button
                   type="button"
                   class="ws-icon"
@@ -297,7 +326,13 @@ export function CoalitionTiles({
         })}
       </div>
       {custom !== null && (
-        <PanelModal title={t('panel.custom')} onClose={() => setCustom(null)}>
+        <PanelModal
+          title={t(editing === null ? 'panel.custom' : 'panel.editTile')}
+          onClose={() => {
+            setCustom(null);
+            setEditing(null);
+          }}
+        >
           <div class="ws-custom-list">
             {scenario.parties.map((party) => (
               <label class="ws-custom-pick" key={party.id}>
@@ -333,6 +368,22 @@ export function CoalitionTiles({
             class="ws-button"
             disabled={!custom.length || matchShown}
             onClick={() => {
+              if (editing !== null) {
+                const old = session.custom.find(
+                  (entry) => entry.key === editing,
+                );
+                store.setPanelSession({
+                  custom: replaceCustomTile(
+                    session.custom,
+                    editing,
+                    custom,
+                    old?.label ?? '',
+                  ),
+                });
+                setCustom(null);
+                setEditing(null);
+                return;
+              }
               if (match) {
                 store.setPanelSession({
                   tiles:

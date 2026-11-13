@@ -129,32 +129,32 @@ describe('M7-16 eight-party example', () => {
     expect(shownTexts(draft, 'people.set')).toEqual(['own']);
     expect(shownTexts(draft, 'people.count')).toEqual(['7']);
     expect(shownTexts(draft, 'turnout')).toEqual([
-      '50',
-      '60',
-      '65',
-      '80',
-      '65',
-      '80',
-      '60',
+      '77.25',
+      '78.25',
+      '68.79',
+      '80.62',
+      '80.01',
+      '80.03',
+      '69.12',
     ]);
     expect(shownTexts(draft, 'votes.shares')).toEqual([
-      '19',
-      '12',
-      '19',
-      '8',
+      '21.85',
+      '14.7',
+      '22.77',
+      '7.37',
+      '6.2',
+      '6.73',
       '6',
-      '12',
-      '10',
-      '14',
+      '14.38',
     ]);
     expect(shownTexts(draft, 'compose').slice(0, 7)).toEqual([
-      '30',
-      '39',
-      '15',
-      '10',
+      '31.2',
+      '38.79',
+      '14.66',
+      '9.38',
       '0',
       '0',
-      '6',
+      '5.97',
     ]);
     expect(shownTexts(draft, 'growth')).toEqual([
       '0.25',
@@ -200,13 +200,14 @@ describe('M7-16 2022 educational example', () => {
     const scenario = built('israel');
     expect(scenario.inputMode).toBe('parties');
     expect(scenario.groups.map((group) => group.id)).toEqual(BASIC);
+    // M7-19: the example's vote shares follow the ultra-Orthodox turnout of 85.
     expect(seatsOf(scenario)).toEqual({
-      likud: 31,
-      'yesh-atid': 30,
+      likud: 30,
+      'yesh-atid': 29,
       avoda: 11,
-      'religious-zionism': 14,
-      shas: 18,
-      raam: 16,
+      'religious-zionism': 15,
+      shas: 20,
+      raam: 15,
     });
     expect(seatsOf(scenario)).toEqual(
       seatsOf(scenarioOf(presetInput('israelExample'))),
@@ -218,13 +219,14 @@ describe('M7-16 2022 educational example', () => {
     expect(shownTexts(draft, 'parties.count')).toEqual(['6']);
     expect(shownTexts(draft, 'parties.naming')).toEqual(['example']);
     expect(shownTexts(draft, 'people.set')).toEqual(['example']);
+    // M7-19: derived at the per-group turnout (ultra-Orthodox 85).
     expect(shownTexts(draft, 'votes.shares')).toEqual([
-      '25.61',
-      '24.77',
-      '9.69',
-      '11.95',
-      '14.93',
-      '13.05',
+      '25.25',
+      '24.31',
+      '9.47',
+      '12.02',
+      '16.2',
+      '12.75',
     ]);
     for (const page of answerPages(draft)) {
       expect(pageError(draft, page), page).toBeNull();
@@ -302,7 +304,7 @@ describe('M7-16 store start choices', () => {
       serializeScenario(fixture()),
     );
     expect(state.input).toBe(state.loadedInput);
-    expect(shownTexts(state.book.draft, 'turnout')[0]).toBe('50');
+    expect(shownTexts(state.book.draft, 'turnout')[0]).toBe('77.25');
   });
 
   it('leafs through an example from its first page, every value prefilled', () => {

@@ -262,6 +262,9 @@ export function FutureWorkspace({
   if (!source)
     return (
       <div class="ws-future">
+        <p class="ws-banner" data-future-banner>
+          {t('panel.futureBanner')}
+        </p>
         {modes}
         {timeline()}
         <p role="status">{t('panel.stale')}</p>
@@ -400,6 +403,9 @@ export function FutureWorkspace({
   const base = derived.result;
   return (
     <div class="ws-future" data-future-current={mode}>
+      <p class="ws-banner" data-future-banner>
+        {t('panel.futureBanner')}
+      </p>
       {modes}
       {timeline()}
       <div class="ws-fmain">
@@ -562,7 +568,6 @@ function FutureCards({
         title={t('panel.sameCoalitions')}
         t={t}
         enlargedTop={timeline}
-        hint={t('panel.sameNote')}
         actions={
           tiles.length < 4 && (
             <button
@@ -662,26 +667,65 @@ function FutureCards({
                     ? '—'
                     : `${formatDecimal(locale, after.voteShare)}%`}
                 </p>
-                <p class="ws-members">
-                  {future.members.map((member) => (
-                    <span
-                      key={member.partyId}
-                      data-future-card-party={member.partyId}
-                      style={{
-                        '--color':
-                          scenario.parties.find(
-                            (party) => party.id === member.partyId,
-                          )?.color ?? OTHERS,
-                      }}
-                    >
-                      <i class="ws-dot" aria-hidden="true" />
-                      <bdi>{partyName(scenario, member.partyId, t)}</bdi>{' '}
-                      {`${member.seats.baseline ?? '—'}→${
-                        after ? (member.seats.current ?? '—') : '—'
-                      }`}
+                <div class="ws-members">
+                  <p class="ws-members-row" data-members="in">
+                    <span class="ws-members-label">
+                      {t('panel.inCoalition')}:
                     </span>
-                  ))}
-                </p>
+                    {future.members.map((member) => (
+                      <span
+                        key={member.partyId}
+                        class="ws-member ws-member--in"
+                        data-future-card-party={member.partyId}
+                        style={{
+                          '--color':
+                            scenario.parties.find(
+                              (party) => party.id === member.partyId,
+                            )?.color ?? OTHERS,
+                        }}
+                      >
+                        <i class="ws-dot" aria-hidden="true" />
+                        <bdi>
+                          {partyName(scenario, member.partyId, t).trim()}
+                        </bdi>{' '}
+                        {`${member.seats.baseline ?? '—'}→${
+                          after ? (member.seats.current ?? '—') : '—'
+                        }`}
+                      </span>
+                    ))}
+                  </p>
+                  {scenario.parties.some(
+                    (party) => !entry.partyIds.includes(party.id),
+                  ) && (
+                    <p class="ws-members-row" data-members="out">
+                      <span class="ws-members-label">
+                        {t('panel.outCoalition')}:
+                      </span>
+                      {scenario.parties
+                        .filter((party) => !entry.partyIds.includes(party.id))
+                        .map((party) => (
+                          <span
+                            key={party.id}
+                            class="ws-member ws-member--out"
+                            data-future-card-party={party.id}
+                          >
+                            <bdi>{partyName(scenario, party.id, t).trim()}</bdi>{' '}
+                            {`${
+                              base.allocation.parties.find(
+                                (row) => row.partyId === party.id,
+                              )?.seats ?? '—'
+                            }→${
+                              after
+                                ? (projected?.allocation.parties.find(
+                                    (row) => row.partyId === party.id,
+                                  )?.seats ?? '—')
+                                : '—'
+                            }`}
+                          </span>
+                        ))}
+                    </p>
+                  )}
+                </div>
                 <Breach future={future} scenario={scenario} t={t} />
               </article>
             );
@@ -778,14 +822,84 @@ function Experiment({
                 locale={locale}
                 t={t}
               />
-              <ul class="ws-snapshot-parties">
-                {reports[index]!.parties.map((party) => (
-                  <li key={party.partyId} data-snapshot-party={party.partyId}>
-                    <bdi>{partyName(scenario, party.partyId, t)}</bdi>:{' '}
-                    {party.seats}
-                  </li>
-                ))}
-              </ul>
+              {row.id !== 'original' && (
+                <p class="ws-snapshot-note" data-snapshot-note={row.id}>
+                  {t(
+                    row.id === 'today'
+                      ? 'panel.snapshotToday'
+                      : 'panel.snapshotFuture',
+                  )}
+                </p>
+              )}
+              {row.id === 'today' && (
+                <p class="ws-snapshot-note" data-snapshot-turnout>
+                  {t('panel.overallTurnout')}:{' '}
+                  {formatDecimal(
+                    locale,
+                    panelDisplay(
+                      panelPercent(snapshots.original.result.votes.turnout),
+                    ),
+                  )}
+                  % →{' '}
+                  {formatDecimal(
+                    locale,
+                    panelDisplay(
+                      panelPercent(snapshots.today.result.votes.turnout),
+                    ),
+                  )}
+                  %
+                </p>
+              )}
+              <div class="ws-snapshot-parties">
+                {(['in', 'out'] as const).map((side) => {
+                  const listed = reports[index]!.parties.filter(
+                    (party) =>
+                      partyIds.includes(party.partyId) === (side === 'in'),
+                  );
+                  if (listed.length === 0) return null;
+                  return (
+                    <p
+                      key={side}
+                      class="ws-members-row"
+                      data-snapshot-parties={side}
+                    >
+                      <span class="ws-members-label">
+                        {t(
+                          side === 'in'
+                            ? 'panel.inCoalition'
+                            : 'panel.outCoalition',
+                        )}
+                        :
+                      </span>
+                      {listed.map((party) => (
+                        <span
+                          key={party.partyId}
+                          class={`ws-member ws-member--${side}`}
+                          data-snapshot-party={party.partyId}
+                          style={
+                            side === 'in'
+                              ? {
+                                  '--color':
+                                    scenario.parties.find(
+                                      (item) => item.id === party.partyId,
+                                    )?.color ?? OTHERS,
+                                }
+                              : undefined
+                          }
+                        >
+                          {side === 'in' && (
+                            <i class="ws-dot" aria-hidden="true" />
+                          )}
+                          <bdi>
+                            {partyName(scenario, party.partyId, t).trim()}
+                          </bdi>
+                          : {party.seats}
+                        </span>
+                      ))}
+                    </p>
+                  );
+                })}
+              </div>
             </section>
           );
         })}

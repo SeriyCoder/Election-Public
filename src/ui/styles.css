@@ -2457,6 +2457,7 @@ select {
 
 .book__combo:has(> .book__pick)::after {
   content: '▾';
+  flex: none;
   align-self: center;
   margin-inline-start: calc(-1 * var(--touch));
   inline-size: var(--touch);
@@ -2530,10 +2531,12 @@ select {
 
 .book__name > .book__combo {
   display: flex;
+  min-inline-size: 0;
 }
 
 .book__name > .book__combo > .field__input {
   flex: 1 1 auto;
+  min-inline-size: 0;
 }
 
 .book__name > .book__hint {
@@ -3453,12 +3456,17 @@ select {
   stroke: currentColor;
   stroke-width: 1.8;
 }
+.ws-lock[aria-pressed='true'],
 .ws .ws-lock[aria-pressed='true'],
 .ws-modal .ws-lock[aria-pressed='true'],
 .ws-future .ws-lock[aria-pressed='true'] {
-  border-color: #7a9de6;
-  background: #e2ebff;
-  color: #154eb1;
+  border-color: #b45309;
+  background: #fbbf24;
+  color: #451a03;
+  box-shadow: 0 0 0 1px #b45309;
+}
+.ws-lock[aria-pressed='true'] svg rect {
+  fill: currentColor;
 }
 .ws-hcontrol,
 .ws-inline {
@@ -4321,13 +4329,10 @@ select {
   font-weight: 400;
 }
 .ws-snapshot-parties {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 2px 8px;
+  display: grid;
+  gap: 2px;
   margin: 0;
   padding: 0;
-  list-style: none;
   font-size: 11px;
 }
 .ws-growth {
@@ -4645,17 +4650,38 @@ select {
   text-align: center;
 }
 .ws-members {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 2px 8px;
+  display: grid;
+  gap: 2px;
   margin: 0;
   font-size: 11px;
 }
-.ws-members > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
+
+/* M7-20: coalition members and the rest, grouped and told apart. */
+.ws-members-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 0;
+}
+
+.ws-members-label {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.ws-member {
+  display: inline;
+}
+
+.ws-member--in {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.ws-member--out {
+  color: #475569;
+  font-weight: 400;
 }
 .ws-dot {
   display: inline-block;
@@ -4861,4 +4887,303 @@ select {
   .app[dir='rtl'] .future-details > .region {
     direction: rtl;
   }
+}
+
+/* M7-19: inviting start cards and the simulator's purpose. */
+.book__start--accent {
+  border-color: #7aa7e6;
+  background: #eaf3ff;
+  box-shadow: 0 1px 3px rgb(29 78 216 / 0.15);
+}
+
+.purpose {
+  margin: 0 0 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border-inline-start: 4px solid var(--accent);
+  border-radius: 0 0.375rem 0.375rem 0;
+  background: #f4f8ff;
+  font-size: 0.9375rem;
+  line-height: 1.35;
+}
+
+[dir='rtl'] .purpose {
+  border-radius: 0.375rem 0 0 0.375rem;
+}
+
+.book__body:has(.purpose) .book__start {
+  padding-block: 0.375rem;
+}
+
+.purpose__goal {
+  margin: 0;
+}
+
+.purpose__hypothesis-title {
+  margin: 0.375rem 0 0;
+  font-weight: 600;
+  color: #0c3a75;
+}
+
+.purpose__hypothesis,
+.purpose__workspace {
+  margin: 0.25rem 0 0;
+}
+
+.purpose__note {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.purpose__open {
+  margin-block-start: 0.5rem;
+}
+
+/* M7-20: on wide screens the card reads as two short columns, not one band. */
+@media (min-width: 1200px) {
+  .purpose {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 0.25rem 1.25rem;
+    align-items: start;
+  }
+
+  .purpose__goal {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .purpose__hypothesis-title {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0;
+  }
+
+  .purpose__hypothesis {
+    grid-column: 2;
+    grid-row: 2;
+    margin: 0;
+  }
+
+  .purpose__workspace {
+    grid-column: 1 / span 2;
+    grid-row: 3;
+  }
+
+  .purpose__note {
+    grid-column: 1 / span 2;
+    grid-row: 4;
+  }
+
+  .purpose__open {
+    grid-column: 3;
+    grid-row: 1 / span 4;
+    align-self: center;
+    margin: 0;
+  }
+}
+
+/* M7-20: the saturated call-to-action button. */
+.button--cta {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.button--cta:hover {
+  background: #1e40af;
+}
+
+.button--cta:focus-visible {
+  outline-color: #1e3a8a;
+}
+
+/* M7-20: the permanent accent of the Coalition simulations tab. */
+.views__item--cta {
+  border-color: #1d4ed8;
+  background: #eaf3ff;
+  color: #0c3a75;
+  font-weight: 600;
+}
+
+/* M7-20: the banner at the top of the future view. */
+.ws-banner {
+  margin: 0 0 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-inline-start: 4px solid var(--accent);
+  border-radius: 0 0.375rem 0.375rem 0;
+  background: #f4f8ff;
+  font-size: 0.9375rem;
+  line-height: 1.35;
+}
+
+[dir='rtl'] .ws-banner {
+  border-radius: 0.375rem 0 0 0.375rem;
+}
+
+/* M7-20: the hint and simulator button beside the coalition tiles. */
+.ws-tiles-lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.75rem;
+  margin-block: 0.25rem;
+}
+
+.ws-tiles-hint {
+  margin: 0;
+  flex: 1 1 14rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+/* M7-20: the min-two-unlocked refusal hint. */
+.ws-lock-hint,
+.book__lock-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #b42318;
+}
+
+/* M7-20: what each experiment snapshot means, under its ring. */
+.ws-snapshot-note {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* M7-20: the chapter-2 footnote: the lesson explains the question above. */
+.book__footnote {
+  padding: 0.375rem 0.625rem;
+  border-inline-start: 3px solid #c9d8f0;
+  background: #f7faff;
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+
+[dir='rtl'] .book__footnote {
+  border-radius: 0.375rem 0 0 0.375rem;
+}
+
+.book__footnote-ref {
+  color: var(--accent);
+  font-weight: 700;
+  margin-inline-start: 0.125rem;
+}
+
+.book__footnote .book__question::before {
+  content: '* ';
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* M7-19: several pages stacked on one screen, scrolled inside the body. */
+.app[data-screen='book']:has(.book__body--screen) {
+  block-size: 100vh;
+  block-size: 100dvh;
+  min-block-size: 0;
+}
+
+.app[data-screen='book'] > .public-notice {
+  flex: none;
+}
+
+.book:has(.book__body--screen) {
+  min-block-size: 0;
+}
+
+.book__sheet:has(.book__body--screen) {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-block-size: 100%;
+}
+
+.book__body--screen {
+  grid-template-columns: minmax(0, 1fr);
+  min-block-size: 0;
+  overflow-y: auto;
+}
+
+/* M7-20: the scrolling opening keeps its drawing beside the start cards, so
+   the clipped motif never reaches under the navigation. */
+@media (min-width: 768px) {
+  .book__body--screen:has([data-book-page='intro']) {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+}
+
+.book__stack {
+  display: grid;
+  gap: 0.75rem;
+  min-inline-size: 0;
+}
+
+.book__stack--lone {
+  display: contents;
+}
+
+.book__block + .book__block {
+  padding-block-start: 0.75rem;
+  border-block-start: 1px solid var(--border);
+}
+
+.book__block > .book__question {
+  font-size: 1.125rem;
+}
+
+@media (min-width: 1024px) {
+  .book__stack:has(> [data-book-page='people.mix']) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .book__stack:has(> [data-book-page='people.mix'])
+    > [data-book-page='people.set'] {
+    grid-column: 1 / -1;
+  }
+
+  .book__stack:has(> [data-book-page='people.mix'])
+    > .book__block
+    + .book__block {
+    padding-block-start: 0;
+    border-block-start: 0;
+  }
+}
+
+.book__check-graphic {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.book__check-graphic > .book__pie {
+  flex: none;
+  inline-size: 8rem;
+}
+
+.book__check-graphic > :not(.book__pie) {
+  flex: 1 1 16rem;
+  min-inline-size: 0;
+}
+
+.book__keys {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 0.125rem 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.book__keys > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.book__review-item > .book__bar {
+  flex-basis: 100%;
 }

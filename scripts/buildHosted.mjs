@@ -47,8 +47,11 @@ try {
 const externalRequests = [];
 try {
   const context = await browser.newContext({
-    viewport: { width: 1920, height: 1008 },
-    deviceScaleFactor: 0.625,
+    // M7-20: the always-open purpose card made the page taller; 2400 × 1260
+    // at scale 0.5 still produces the exact 1200 × 630 PNG with the notice
+    // and a settled coalition tile visible together.
+    viewport: { width: 2400, height: 1260 },
+    deviceScaleFactor: 0.5,
     locale: 'he-IL',
     offline: true,
     colorScheme: 'light',
@@ -95,13 +98,13 @@ try {
     noticeBounds === null ||
     resultBounds === null ||
     noticeBounds.y < 0 ||
-    noticeBounds.y + noticeBounds.height > 1008 ||
+    noticeBounds.y + noticeBounds.height > 1260 ||
     noticeBounds.x < 0 ||
-    noticeBounds.x + noticeBounds.width > 1920 ||
+    noticeBounds.x + noticeBounds.width > 2400 ||
     resultBounds.y < 0 ||
-    resultBounds.y + resultBounds.height > 1008 ||
+    resultBounds.y + resultBounds.height > 1260 ||
     resultBounds.x < 0 ||
-    resultBounds.x + resultBounds.width > 1920
+    resultBounds.x + resultBounds.width > 2400
   ) {
     throw new Error(
       `The notice and a settled coalition result must both fit in the preview viewport: ${JSON.stringify({ noticeBounds, resultBounds })}`,

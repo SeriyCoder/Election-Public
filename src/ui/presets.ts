@@ -208,7 +208,8 @@ function israelExample(): Json {
       name: '',
       populationShare: share,
       growthRate: '0',
-      turnout: '0.7',
+      // M7-19: the questionnaire's per-group turnout suggestion.
+      turnout: id === 'haredi' ? '0.85' : '0.7',
       turnoutChange: '0',
       validBallotRate: STANDARD_VALID_BALLOT_RATE,
       participationFactor: '1',

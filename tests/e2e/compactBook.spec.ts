@@ -3,6 +3,7 @@ import { workspaceLinked } from '../engine/helpers/workspace';
 import type { Json } from '../engine/helpers/scenarios';
 import {
   book,
+  bookPage,
   expect,
   nextTo,
   openBook,
@@ -16,29 +17,81 @@ import {
   lastBlobText,
 } from './helpers';
 
+type Fraction = readonly [bigint, bigint];
+
+const fraction = (value: Json): Fraction => [
+  BigInt(value.numerator as string),
+  BigInt(value.denominator as string),
+];
+
+function gcd(a: bigint, b: bigint): bigint {
+  return b === 0n ? (a < 0n ? -a : a) : gcd(b, a % b);
+}
+
+const add = ([a, b]: Fraction, [c, d]: Fraction): Fraction => [
+  a * d + c * b,
+  b * d,
+];
+
+/**
+ * Independent exact overall turnout of a party-first scenario: the voters of
+ * each group from the party shares and compositions, over the eligible
+ * population those voters imply through the group turnout.
+ */
+function overallTurnout(scenario: Json): Json {
+  let voters: Fraction = [0n, 1n];
+  let population: Fraction = [0n, 1n];
+  for (const group of scenario.groups as Json[]) {
+    let groupVoters: Fraction = [0n, 1n];
+    for (const party of scenario.parties as Json[]) {
+      const [s, t] = fraction(party.voteShare as Json);
+      const [c, d] = fraction(
+        (party.composition as Json)[group.id as string] as Json,
+      );
+      groupVoters = add(groupVoters, [s * c, t * d]);
+    }
+    const [n, m] = fraction(group.turnout as Json);
+    voters = add(voters, groupVoters);
+    population = add(population, [groupVoters[0] * m, groupVoters[1] * n]);
+  }
+  const numerator = voters[0] * population[1];
+  const denominator = voters[1] * population[0];
+  const common = gcd(numerator, denominator);
+  return {
+    numerator: String(numerator / common),
+    denominator: String(denominator / common),
+  };
+}
+
 test('compact questionnaire shows seven simultaneous rates, one composition page and independent pair ends', async ({
   page,
 }) => {
   await openBook(page);
   await nextTo(page, 'people.set');
-  await expect(page.locator('[data-book-choice="example"]')).toBeChecked();
+  await expect(
+    bookPage(page, 'people.set').locator('[data-book-choice="example"]'),
+  ).toBeChecked();
   await nextTo(page, 'turnout');
-  await expect(page.locator('[data-book-rate]')).toHaveCount(7);
+  await expect(
+    bookPage(page, 'turnout').locator('[data-book-rate]'),
+  ).toHaveCount(7);
   await nextTo(page, 'compose');
+  const compose = bookPage(page, 'compose');
   await expect(page.locator('[data-fictional-party]')).toHaveCount(0);
-  await expect(page.locator('[data-compose-party] option')).toHaveCount(4);
-  await expect(page.locator('[data-book-cell]')).toHaveCount(7);
+  await expect(compose.locator('[data-compose-party] option')).toHaveCount(4);
+  await expect(compose.locator('[data-book-cell]')).toHaveCount(7);
   await nextTo(page, 'growth');
-  await expect(page.locator('[data-book-rate]')).toHaveCount(7);
-  const first = page.locator('[data-book-field="0"]');
+  const growth = bookPage(page, 'growth');
+  await expect(growth.locator('[data-book-rate]')).toHaveCount(7);
+  const first = growth.locator('[data-book-field="0"]');
   await first.fill('2.5');
-  await expect(page.locator('[data-growth-warning]')).toHaveCount(0);
+  await expect(growth.locator('[data-growth-warning]')).toHaveCount(0);
   await first.fill('2.50000001');
-  await expect(page.locator('[data-growth-warning]')).toHaveCount(1);
+  await expect(growth.locator('[data-growth-warning]')).toHaveCount(1);
   await first.fill('-0.5');
-  await expect(page.locator('[data-growth-warning]')).toHaveCount(0);
+  await expect(growth.locator('[data-growth-warning]')).toHaveCount(0);
   await first.fill('-0.50000001');
-  await expect(page.locator('[data-growth-warning]')).toHaveCount(1);
+  await expect(growth.locator('[data-growth-warning]')).toHaveCount(1);
   await first.fill('0');
   await nextTo(page, 'coalitions');
   const ends = page.locator('[data-refusal]');
@@ -76,10 +129,17 @@ test('compact questionnaire shows seven simultaneous rates, one composition page
   expect(
     (exported.parties as Json[]).every((party) => party.composition !== null),
   ).toBe(true);
-  expect((exported.rules as Json).overallTurnout).toEqual({
-    numerator: '7',
-    denominator: '10',
-  });
+  // The suggested group turnout: haredi 85%, every other group 70%.
+  for (const group of exported.groups as Json[]) {
+    expect(group.turnout).toEqual(
+      group.id === 'haredi'
+        ? { numerator: '17', denominator: '20' }
+        : { numerator: '7', denominator: '10' },
+    );
+  }
+  expect((exported.rules as Json).overallTurnout).toEqual(
+    overallTurnout(exported),
+  );
   expect(
     (exported.groups as Json[]).every((group) => group.turnoutChange === '0'),
   ).toBe(true);

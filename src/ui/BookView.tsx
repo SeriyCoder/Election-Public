@@ -34,6 +34,9 @@ import {
   remainder,
   resolveDraft,
   reviewParts,
+  screenOf,
+  canLockAnother,
+  defaultLocks,
   reviewItemName,
   shownTexts,
   takesAnswer,
@@ -56,7 +59,8 @@ import { DirectedRelations } from './DirectedRelations';
 import { LockButton } from './PanelControls';
 import { MotifArt, Palms } from './motifs';
 import { entityName } from './names';
-import { START_EXAMPLES } from './startExamples';
+import { Purpose } from './Purpose';
+import { exampleAbout, START_EXAMPLES } from './startExamples';
 import type { Store } from './store';
 
 export interface BookViewProps {
@@ -67,6 +71,11 @@ export interface BookViewProps {
 
 const QUESTION_ID = 'book-question';
 const ERROR_ID = 'book-error';
+
+/** An element id unique to one page of a screen. */
+function pageId(base: string, page: PageKey): string {
+  return `${base}-${page.replace(/\./g, '-')}`;
+}
 const CONFIRM_ID = 'book-confirm-text';
 
 const STEP_KIND: Partial<Record<Section, string>> = {
@@ -194,7 +203,7 @@ function StackBar({
   readonly texts: readonly string[];
   readonly ids: readonly string[];
   readonly colors: readonly string[];
-  readonly marker: 'data-shares-bar' | 'data-compose-bar';
+  readonly marker: 'data-shares-bar' | 'data-compose-bar' | 'data-review-bar';
 }) {
   let start = '0';
   return (
@@ -381,9 +390,12 @@ interface AnswerProps {
   readonly onShow?: (party: number) => void;
 }
 
-function invalidProps(invalid: boolean) {
+function invalidProps(invalid: boolean, page: PageKey) {
   return invalid
-    ? { 'aria-invalid': 'true' as const, 'aria-describedby': ERROR_ID }
+    ? {
+        'aria-invalid': 'true' as const,
+        'aria-describedby': pageId(ERROR_ID, page),
+      }
     : {};
 }
 
@@ -490,6 +502,7 @@ function PickList({
         store.answerBook(
           index,
           names || value === '' ? value : formatDecimal(locale, value),
+          spec.key,
         );
       }}
     >
@@ -534,9 +547,11 @@ function SingleAnswer({
           inputMode={decimal ? 'decimal' : 'numeric'}
           data-book-field={0}
           value={suggested && decimal ? percentText(locale, text) : text}
-          aria-labelledby={QUESTION_ID}
-          {...invalidProps(invalid(0))}
-          onInput={(event) => store.answerBook(0, event.currentTarget.value)}
+          aria-labelledby={pageId(QUESTION_ID, spec.key)}
+          {...invalidProps(invalid(0), spec.key)}
+          onInput={(event) =>
+            store.answerBook(0, event.currentTarget.value, spec.key)
+          }
         />
         <PickList
           store={store}
@@ -562,17 +577,17 @@ function ChoiceAnswer({ store, spec, texts, suggested, t }: AnswerProps) {
       <div
         class="book__choices"
         role="radiogroup"
-        aria-labelledby={QUESTION_ID}
+        aria-labelledby={pageId(QUESTION_ID, spec.key)}
       >
         {spec.choices.map((choice) => (
           <label class="book__choice" key={choice}>
             <input
               type="radio"
-              name="book-choice"
+              name={pageId('book-choice', spec.key)}
               value={choice}
               data-book-choice={choice}
               checked={chosen === choice}
-              onChange={() => store.answerBook(0, choice)}
+              onChange={() => store.answerBook(0, choice, spec.key)}
             />
             <span>{t(`book.choice.${spec.section}.${choice}`)}</span>
           </label>
@@ -624,7 +639,7 @@ function GroupRates({
                 aria-label={name}
                 value={slider ?? (growth ? '0' : '70')}
                 onInput={(event) =>
-                  store.answerBook(index, event.currentTarget.value)
+                  store.answerBook(index, event.currentTarget.value, spec.key)
                 }
               />
               <span class="book__rate-value">
@@ -635,9 +650,9 @@ function GroupRates({
                   class="field__input"
                   data-book-field={index}
                   value={text}
-                  {...invalidProps(invalid(index))}
+                  {...invalidProps(invalid(index), spec.key)}
                   onInput={(event) =>
-                    store.answerBook(index, event.currentTarget.value)
+                    store.answerBook(index, event.currentTarget.value, spec.key)
                   }
                 />
                 <span>%</span>
@@ -657,7 +672,7 @@ function GroupRates({
   );
 }
 
-function Relationships({ store, draft, texts, t }: AnswerProps) {
+function Relationships({ store, spec, draft, texts, t }: AnswerProps) {
   const ids = partyIds(draft);
   const names = partyNames(draft);
   const width = ids.length + 1;
@@ -679,7 +694,11 @@ function Relationships({ store, draft, texts, t }: AnswerProps) {
         paged={false}
         onToggle={(from, to) => {
           const field = ids.indexOf(from) * width + ids.indexOf(to) + 1;
-          store.answerBook(field, texts[field] === 'no' ? 'yes' : 'no');
+          store.answerBook(
+            field,
+            texts[field] === 'no' ? 'yes' : 'no',
+            spec.key,
+          );
         }}
       />
     </div>
@@ -723,7 +742,12 @@ function NamesAnswer({
           const id = spec.fields[slot] ?? `${slot}`;
           const pick = texts[at - 1] ?? '';
           const label = t('book.field.name', { n: slot + 1 });
-          const about = pick === '' ? null : catalogAboutKey(kind, pick);
+          const about =
+            pick !== ''
+              ? catalogAboutKey(kind, pick)
+              : kind === 'party'
+                ? exampleAbout(locale, slot, texts[at] ?? '')
+                : null;
           return (
             <div class="book__name" key={slot}>
               <span class="book__number" aria-hidden="true">
@@ -741,9 +765,9 @@ function NamesAnswer({
                   }
                   placeholder={entityName(kind, { id }, t)}
                   aria-label={label}
-                  {...invalidProps(invalid(at))}
+                  {...invalidProps(invalid(at), spec.key)}
                   onInput={(event) =>
-                    store.answerBook(at, event.currentTarget.value)
+                    store.answerBook(at, event.currentTarget.value, spec.key)
                   }
                 />
                 <PickList
@@ -808,7 +832,12 @@ function PercentCell({
   readonly locale: Locale;
   readonly t: Translate;
   /** A lock that keeps the value when the row is aligned to 100%. */
-  readonly lock?: { readonly locked: boolean; readonly onToggle: () => void };
+  readonly lock?: {
+    readonly locked: boolean;
+    readonly onToggle: () => void;
+    /** The data attribute naming the lock; the composition lock by default. */
+    readonly marker?: string;
+  };
 }) {
   const text = texts[field] ?? '';
   const slider = fractionToPercent(percentToFraction(text));
@@ -818,7 +847,10 @@ function PercentCell({
       data-book-cell={cell}
       data-locked={lock?.locked}
     >
-      <label class="book__label" for={`book-cell-${field}`}>
+      <label
+        class="book__label"
+        for={`${pageId('book-cell', spec.key)}-${field}`}
+      >
         <span
           class="book__key"
           data-key={id}
@@ -833,12 +865,12 @@ function PercentCell({
             class="field__input book__input"
             type="text"
             inputMode="decimal"
-            id={`book-cell-${field}`}
+            id={`${pageId('book-cell', spec.key)}-${field}`}
             data-book-field={field}
             value={suggested ? percentText(locale, text) : text}
-            {...invalidProps(invalid)}
+            {...invalidProps(invalid, spec.key)}
             onInput={(event) =>
-              store.answerBook(field, event.currentTarget.value)
+              store.answerBook(field, event.currentTarget.value, spec.key)
             }
           />
           <PickList
@@ -857,7 +889,7 @@ function PercentCell({
           <LockButton
             locked={lock.locked}
             label={`${t('panel.lock')}: ${name}`}
-            marker={{ 'data-compose-lock': id }}
+            marker={{ [lock.marker ?? 'data-compose-lock']: id }}
             onToggle={lock.onToggle}
           />
         )}
@@ -870,7 +902,9 @@ function PercentCell({
         step="0.25"
         aria-label={name}
         value={slider ?? '0'}
-        onInput={(event) => store.answerBook(field, event.currentTarget.value)}
+        onInput={(event) =>
+          store.answerBook(field, event.currentTarget.value, spec.key)
+        }
       />
     </div>
   );
@@ -890,6 +924,23 @@ function PercentsAnswer({
 }: AnswerProps) {
   const line = remainderLine(remainder(draft, spec.key), locale, t);
   const colors = rowColors(spec);
+  const shares = spec.key === 'votes.shares';
+  // M7-20: defaults until touched; a touched set is kept in the book state.
+  const stored = store.getState().book.locks?.['votes.shares'];
+  const locks = shares ? (stored ?? defaultLocks(texts)) : [];
+  const [lockHint, setLockHint] = useState(false);
+  const toggleLock = (row: number) => {
+    const locking = !locks.includes(row);
+    if (locking && !canLockAnother(texts.length, locks.length)) {
+      setLockHint(true);
+      return;
+    }
+    setLockHint(false);
+    store.setBookLocks(
+      'votes.shares',
+      locking ? [...locks, row] : locks.filter((other) => other !== row),
+    );
+  };
   return (
     <div class="book__answer book__answer--fields book__answer--cells">
       <StackBar
@@ -919,12 +970,38 @@ function PercentsAnswer({
             invalid={invalid(index)}
             locale={locale}
             t={t}
+            lock={
+              shares
+                ? {
+                    locked: locks.includes(index),
+                    onToggle: () => toggleLock(index),
+                    marker: 'data-shares-lock',
+                  }
+                : undefined
+            }
           />
         ))}
       </div>
-      <p class="book__remainder" data-remainder data-state={line.state}>
-        {line.text}
-      </p>
+      <div class="book__tally">
+        <p class="book__remainder" data-remainder data-state={line.state}>
+          {line.text}
+        </p>
+        {lockHint && (
+          <p class="book__lock-hint" role="status" data-lock-hint>
+            {t('panel.minUnlocked')}
+          </p>
+        )}
+        {shares && (
+          <button
+            type="button"
+            class="button button--small"
+            data-action="shares-align"
+            onClick={() => store.bookAlignShares(locks)}
+          >
+            {t('book.compose.align')}
+          </button>
+        )}
+      </div>
       <Suggested show={suggested} kind={spec.kind} t={t} />
     </div>
   );
@@ -955,18 +1032,28 @@ function ComposeAnswer({
   const rest = (party: number) => remainder(draft, `compose.${party}`);
   const line = remainderLine(rest(shown), locale, t);
   const turn = (offset: number) => onShow((shown + offset + count) % count);
-  const [locks, setLocks] = useState<
-    Readonly<Record<string, readonly number[]>>
-  >({});
   const shownId = parties[shown] ?? '';
-  const partyLocks = (locks[shownId] ?? []).filter((group) => group < groups);
-  const toggleLock = (group: number) =>
-    setLocks({
-      ...locks,
-      [shownId]: partyLocks.includes(group)
-        ? partyLocks.filter((other) => other !== group)
-        : [...partyLocks, group],
-    });
+  // M7-20: defaults until touched; a touched row is kept in the book state.
+  const rowTexts = texts.slice(at, at + groups);
+  const stored = store.getState().book.locks?.[`compose:${shownId}`];
+  const partyLocks = (stored ?? defaultLocks(rowTexts)).filter(
+    (group) => group < groups,
+  );
+  const [lockHint, setLockHint] = useState(false);
+  const toggleLock = (group: number) => {
+    const locking = !partyLocks.includes(group);
+    if (locking && !canLockAnother(groups, partyLocks.length)) {
+      setLockHint(true);
+      return;
+    }
+    setLockHint(false);
+    store.setBookLocks(
+      `compose:${shownId}`,
+      locking
+        ? [...partyLocks, group]
+        : partyLocks.filter((other) => other !== group),
+    );
+  };
   return (
     <div
       class="book__answer book__answer--fields book__answer--cells"
@@ -1042,6 +1129,11 @@ function ComposeAnswer({
         <p class="book__remainder" data-remainder data-state={line.state}>
           {line.text}
         </p>
+        {lockHint && (
+          <p class="book__lock-hint" role="status" data-lock-hint>
+            {t('panel.minUnlocked')}
+          </p>
+        )}
         <button
           type="button"
           class="button button--small"
@@ -1177,6 +1269,7 @@ function CoalitionAnswer({
     store.answerBook(
       index,
       (event.currentTarget as HTMLInputElement).checked ? 'yes' : 'no',
+      spec.key,
     );
   return (
     <div class="book__answer book__answer--fields">
@@ -1359,52 +1452,65 @@ function StartChoices({
   readonly t: Translate;
 }) {
   return (
-    <ul class="book__starts" aria-label={t('book.start.label')}>
-      <li class="book__start" data-start-card="blank">
-        <b>{t('book.start.blank.title')}</b>
-        <span>{t('book.start.blank.text')}</span>
-        <button
-          type="button"
-          class="button button--small button--primary"
-          data-start="blank"
-          onClick={() => store.startBook(null, false)}
-        >
-          {t('book.start.begin')}
-        </button>
-      </li>
-      {START_EXAMPLES.map((id) => (
-        <li key={id} class="book__start" data-start-card={id}>
-          <b>{t(`book.start.${id}.title`)}</b>
-          <span>{t(`book.start.${id}.text`)}</span>
-          <div class="book__start-actions">
-            {([false, true] as const).map((open) => (
-              <button
-                key={`${open}`}
-                type="button"
-                class={`button button--small${open ? ' button--primary' : ''}`}
-                data-start={id}
-                data-start-mode={open ? 'open' : 'book'}
-                onClick={() => store.startBook(id, open)}
-              >
-                {t(open ? 'book.start.open' : 'book.start.book')}
-              </button>
-            ))}
-          </div>
+    <>
+      <Purpose t={t} />
+      <ul class="book__starts" aria-label={t('book.start.label')}>
+        <li class="book__start" data-start-card="blank">
+          <b>{t('book.start.blank.title')}</b>
+          <span>{t('book.start.blank.text')}</span>
+          <button
+            type="button"
+            class="button button--small"
+            data-start="blank"
+            onClick={() => store.startBook(null, false)}
+          >
+            {t('book.start.begin')}
+          </button>
         </li>
-      ))}
-      <li class="book__start" data-start-card="skip">
-        <b>{t('book.start.skip.title')}</b>
-        <span>{t('book.start.skip.text')}</span>
-        <button
-          type="button"
-          class="button button--small"
-          data-action="start-skip"
-          onClick={() => store.skipBook()}
-        >
-          {t('book.skip')}
-        </button>
-      </li>
-    </ul>
+        {START_EXAMPLES.map((id) => (
+          <li
+            key={id}
+            class={`book__start${id === 'eight' ? ' book__start--accent' : ''}`}
+            data-start-card={id}
+          >
+            <b>{t(`book.start.${id}.title`)}</b>
+            <span>{t(`book.start.${id}.text`)}</span>
+            <div class="book__start-actions">
+              {([false, true] as const).map((open) => (
+                <button
+                  key={`${open}`}
+                  type="button"
+                  class={`button button--small${!open && id === 'eight' ? ' button--cta' : ''}`}
+                  data-start={id}
+                  data-start-mode={open ? 'open' : 'book'}
+                  onClick={() => store.startBook(id, open)}
+                >
+                  {t(
+                    open
+                      ? 'book.start.open'
+                      : id === 'eight'
+                        ? 'book.start.eight.fill'
+                        : 'book.start.book',
+                  )}
+                </button>
+              ))}
+            </div>
+          </li>
+        ))}
+        <li class="book__start" data-start-card="skip">
+          <b>{t('book.start.skip.title')}</b>
+          <span>{t('book.start.skip.text')}</span>
+          <button
+            type="button"
+            class="button button--small"
+            data-action="start-skip"
+            onClick={() => store.skipBook()}
+          >
+            {t('book.skip')}
+          </button>
+        </li>
+      </ul>
+    </>
   );
 }
 
@@ -1519,12 +1625,10 @@ function reviewLines(
 
 function Review({
   store,
-  part,
   locale,
   t,
 }: {
   readonly store: Store;
-  readonly part: number;
   readonly locale: Locale;
   readonly t: Translate;
 }) {
@@ -1535,43 +1639,114 @@ function Review({
     resolved.filled.map((page) => pageSpec(final, page).chapter),
   );
   const pages = bookPages(draft);
+  const parties = partyIds(final);
+  const groups = groupIds(final);
+  const partyColors = parties.map((id, index) => partyColorOf(id, index));
+  const groupColors = groups.map((id, index) => groupColorOf(id, index));
+  const derived = electorateCheck(final, pages);
+  const graphic = (chapter: number) => {
+    switch (chapter) {
+      case 1:
+        return (
+          <Keys
+            names={parties.map((_, index) => partyLabel(final, index, t))}
+            colors={partyColors}
+          />
+        );
+      case 2:
+        return groups.length === 0 ? null : (
+          <Keys
+            names={groups.map((_, index) => groupLabel(final, index, t))}
+            colors={groupColors}
+          />
+        );
+      case 4:
+        return (
+          <>
+            <StackBar
+              texts={shownTexts(final, 'votes.shares')}
+              ids={parties}
+              colors={partyColors}
+              marker="data-review-bar"
+            />
+            {derived.length > 0 && (
+              <StackBar
+                texts={derived.map((row) => row.share)}
+                ids={groups}
+                colors={groupColors}
+                marker="data-review-bar"
+              />
+            )}
+          </>
+        );
+      default:
+        return null;
+    }
+  };
   return (
     <div class="book__review">
-      {(reviewParts(draft)[part] ?? []).map((chapter) => {
-        const first =
-          pages.find(
-            (page) =>
-              takesAnswer(page) && pageSpec(draft, page).chapter === chapter,
-          ) ?? (chapter === 5 ? 'people.set' : 'intro');
-        return (
-          <section
-            class="book__review-item"
-            key={chapter}
-            data-review={chapter}
-            aria-labelledby={`book-review-${chapter}`}
-          >
-            <h2 class="book__review-title" id={`book-review-${chapter}`}>
-              {t(`book.chapter.${chapter}`)}
-            </h2>
-            <Suggested show={filled.has(chapter)} kind="review" t={t} />
-            <button
-              type="button"
-              class="button button--small"
-              data-action="book-edit"
-              data-page={first}
-              onClick={() => store.bookGoTo(first)}
+      {reviewParts(draft)
+        .flat()
+        .map((chapter) => {
+          const first =
+            pages.find(
+              (page) =>
+                takesAnswer(page) && pageSpec(draft, page).chapter === chapter,
+            ) ?? (chapter === 5 ? 'people.set' : 'intro');
+          return (
+            <section
+              class="book__review-item"
+              key={chapter}
+              data-review={chapter}
+              aria-labelledby={`book-review-${chapter}`}
             >
-              {t('book.review.edit')}
-            </button>
-            {reviewLines(chapter, final, locale, t).map((line, index) => (
-              <p class="book__review-line" key={index}>
-                {line}
-              </p>
-            ))}
-          </section>
-        );
-      })}
+              <h2 class="book__review-title" id={`book-review-${chapter}`}>
+                {t(`book.chapter.${chapter}`)}
+              </h2>
+              <Suggested show={filled.has(chapter)} kind="review" t={t} />
+              {graphic(chapter)}
+              {reviewLines(chapter, final, locale, t).map((line, index) => (
+                <p class="book__review-line" key={index}>
+                  {line}
+                </p>
+              ))}
+              <button
+                type="button"
+                class="button button--small"
+                data-action="book-edit"
+                data-page={first}
+                onClick={() => store.bookGoTo(first)}
+              >
+                {t('book.review.edit')}
+              </button>
+            </section>
+          );
+        })}
     </div>
+  );
+}
+
+/** Colour keys with names, one per party or group of a review graphic. */
+function Keys({
+  names,
+  colors,
+}: {
+  readonly names: readonly string[];
+  readonly colors: readonly string[];
+}) {
+  return (
+    <ul class="book__keys" data-review-keys>
+      {names.map((name, index) => (
+        <li key={index}>
+          <span
+            class="book__key"
+            aria-hidden="true"
+            style={{ background: colors[index] ?? PIE_REST }}
+          />
+          {name}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -1672,10 +1847,204 @@ function Confirm({
   );
 }
 
-/** Section 14.5 questionnaire screen: one page of the book, no results. */
+/** Pages shown with their short compact question and explanation. */
+const COMPACT_PAGES: readonly PageKey[] = [
+  'turnout',
+  'growth',
+  'coalitions',
+  'compose',
+];
+
+/**
+ * One page of a screen (M7-19): its question, explanation, answer, error,
+ * narrator and lesson, check or review content. A screen stacks one block per
+ * page; only a lone page is cut into parts.
+ */
+function PageBlock({
+  store,
+  page,
+  index,
+  lone,
+  part,
+  chosenParty,
+  onChoose,
+  locale,
+  t,
+}: {
+  readonly store: Store;
+  readonly page: PageKey;
+  /** The position of the page on its screen; the first holds the h1. */
+  readonly index: number;
+  /** Whether the page is alone on its screen. */
+  readonly lone: boolean;
+  readonly part: number;
+  readonly chosenParty: number | null;
+  readonly onChoose: (party: number) => void;
+  readonly locale: Locale;
+  readonly t: Translate;
+}) {
+  const { draft, attempted, answered } = store.getState().book;
+  const spec = pageSpec(draft, page);
+  const suggested = takesAnswer(page) && isSuggested(draft, page);
+  const parts = pageParts(draft, page);
+  const last = !lone || part >= partCount(draft, page) - 1;
+  const error = attempted
+    ? last
+      ? pageError(draft, page)
+      : partError(draft, page, part)
+    : null;
+  const compact = COMPACT_PAGES.includes(page);
+  const check = spec.kind === 'check' ? electorateCheck(draft, answered) : [];
+  const mix = spec.kind === 'check' ? voterMixCheck(draft, answered) : null;
+  const pie = spec.kind === 'check' ? pieOf(spec, mix) : null;
+  const told = narration(draft, page);
+  const question = compact
+    ? t(`book.compact.${page}.question`)
+    : t(`book.page.${spec.section}.question`, {
+        name: subjectName(spec, draft, t) ?? '',
+      });
+  const explain = compact
+    ? t(`book.compact.${page}.explain`)
+    : t(`book.page.${spec.section}.explain`, {
+        min: spec.min === null ? '' : formatDecimal(locale, spec.min),
+        max: spec.max === null ? '' : formatDecimal(locale, spec.max),
+      });
+  const shownParty =
+    chosenParty !== null && chosenParty < partyIds(draft).length
+      ? chosenParty
+      : page === 'compose' && error !== null && error.index !== null
+        ? (childOf(draft, page, error.index) ?? 0)
+        : 0;
+  const Answer =
+    page === 'turnout' || page === 'growth'
+      ? GroupRates
+      : page === 'coalitions'
+        ? Relationships
+        : page === 'compose'
+          ? ComposeAnswer
+          : spec.kind in ANSWERS
+            ? ANSWERS[spec.kind as keyof typeof ANSWERS]
+            : null;
+  const invalid = (at: number) =>
+    error !== null && (error.index === null || error.index === at);
+  const params = told === null ? {} : { ...told.params };
+  for (const key of DECIMAL_PARAMS) {
+    const value = params[key];
+    if (value !== undefined) {
+      params[key] = formatDecimal(locale, value);
+    }
+  }
+  const Heading = index === 0 ? 'h1' : 'h2';
+  // M7-20: the what-is-a-group lesson is the footnote of the group question.
+  const footnote = page === 'people.about';
+  return (
+    <section
+      class={`book__text${lone ? '' : ' book__block'}${footnote ? ' book__footnote' : ''}`}
+      data-book-page={page}
+      data-footnote={footnote ? page : undefined}
+    >
+      <Heading
+        class="book__question"
+        id={pageId(QUESTION_ID, page)}
+        data-question
+        tabIndex={-1}
+      >
+        {question}
+        {page === 'people.set' && (
+          <sup class="book__footnote-ref" data-footnote-ref aria-hidden="true">
+            *
+          </sup>
+        )}
+      </Heading>
+      <p class="book__explain" data-explain>
+        {explain}
+      </p>
+      {Answer !== null && (
+        <Answer
+          store={store}
+          spec={spec}
+          draft={draft}
+          texts={shownTexts(draft, page)}
+          rows={lone ? (parts[part] ?? []) : parts.flat()}
+          last={last}
+          suggested={suggested}
+          invalid={invalid}
+          locale={locale}
+          t={t}
+          shown={shownParty}
+          onShow={onChoose}
+        />
+      )}
+      {spec.kind === 'intro' && <StartChoices store={store} t={t} />}
+      {spec.kind === 'lesson' && (
+        <Lesson section={spec.section} locale={locale} t={t} />
+      )}
+      {spec.kind === 'check' && (
+        <div class="book__check-graphic">
+          {pie !== null && (
+            <div class="book__pie" data-pie aria-hidden="true" style={pie} />
+          )}
+          <CheckList
+            spec={spec}
+            draft={draft}
+            check={check}
+            mix={mix}
+            locale={locale}
+            t={t}
+          />
+        </div>
+      )}
+      {spec.kind === 'check' && !lone && (
+        <button
+          type="button"
+          class="button button--small"
+          data-action="book-edit"
+          data-page="turnout"
+          onClick={() => store.bookGoTo('turnout')}
+        >
+          {t('book.review.edit')}
+        </button>
+      )}
+      {spec.section === 'people.set' && <ExampleSet locale={locale} t={t} />}
+      {spec.kind === 'review' && <Review store={store} locale={locale} t={t} />}
+      {error !== null && (
+        <p
+          class="book__error"
+          data-book-error
+          role="alert"
+          id={pageId(ERROR_ID, page)}
+        >
+          {errorText(error, locale, t)}
+        </p>
+      )}
+      {told !== null && (
+        <div class="book__narrator">
+          <p data-narrator role="status">
+            {t(`book.narrator.${told.variant}`, params)}
+          </p>
+          {FACT_SECTIONS.includes(spec.section) && (
+            <button
+              type="button"
+              class="button button--small"
+              data-action="open-fact"
+              onClick={() => store.openFact()}
+            >
+              {t('book.facts.open')}
+            </button>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Section 14.5 questionnaire screen: the pages of one screen stacked (M7-19),
+ * or the facts page, no results.
+ */
 export function BookView({ store, t, locale }: BookViewProps) {
   const { book } = store.getState();
-  const { draft, page, part, facts, confirm, attempted, answered } = book;
+  const { draft, page, part, facts, confirm, answered } = book;
   const sheet = useRef<HTMLFormElement>(null);
   const [chosenParty, setChosenParty] = useState<number | null>(null);
 
@@ -1696,66 +2065,16 @@ export function BookView({ store, t, locale }: BookViewProps) {
   }, [page, facts, confirm, part]);
 
   const spec = pageSpec(draft, page);
-  const suggested = takesAnswer(page) && isSuggested(draft, page);
-  const parts = pageParts(draft, page);
-  const count = partCount(draft, page);
+  const screen = screenOf(draft, page);
+  const lone = screen.length === 1;
+  const count = lone ? partCount(draft, page) : 1;
   const last = part >= count - 1;
-  const error = attempted
-    ? last
-      ? pageError(draft, page)
-      : partError(draft, page, part)
-    : null;
   const blocked = confirm !== null;
-  const compact =
-    page === 'turnout' ||
-    page === 'growth' ||
-    page === 'coalitions' ||
-    page === 'compose';
+  const compact = screen.some(
+    (shown) => COMPACT_PAGES.includes(shown) || shown === 'votes.shares',
+  );
+  const figure = facts || (lone && !compact);
   const caption = facts ? null : (CAPTIONS[spec.section] ?? null);
-  const check = spec.kind === 'check' ? electorateCheck(draft, answered) : [];
-  const mix = spec.kind === 'check' ? voterMixCheck(draft, answered) : null;
-  const pie = facts ? null : pieOf(spec, mix);
-  const told = narration(draft, page);
-  const question = facts
-    ? t('book.facts.title')
-    : compact
-      ? t(`book.compact.${page}.question`)
-      : t(`book.page.${spec.section}.question`, {
-          name: subjectName(spec, draft, t) ?? '',
-        });
-  const explain = facts
-    ? t('book.facts.explain')
-    : compact
-      ? t(`book.compact.${page}.explain`)
-      : t(`book.page.${spec.section}.explain`, {
-          min: spec.min === null ? '' : formatDecimal(locale, spec.min),
-          max: spec.max === null ? '' : formatDecimal(locale, spec.max),
-        });
-  const shownParty =
-    chosenParty !== null && chosenParty < partyIds(draft).length
-      ? chosenParty
-      : page === 'compose' && error !== null && error.index !== null
-        ? (childOf(draft, page, error.index) ?? 0)
-        : 0;
-  const Answer =
-    page === 'turnout' || page === 'growth'
-      ? GroupRates
-      : page === 'coalitions'
-        ? Relationships
-        : page === 'compose'
-          ? ComposeAnswer
-          : spec.kind in ANSWERS
-            ? ANSWERS[spec.kind as keyof typeof ANSWERS]
-            : null;
-  const invalid = (index: number) =>
-    error !== null && (error.index === null || error.index === index);
-  const params = told === null ? {} : { ...told.params };
-  for (const key of DECIMAL_PARAMS) {
-    const value = params[key];
-    if (value !== undefined) {
-      params[key] = formatDecimal(locale, value);
-    }
-  }
 
   return (
     <main
@@ -1763,7 +2082,8 @@ export function BookView({ store, t, locale }: BookViewProps) {
       data-book
       data-page={facts ? 'facts' : page}
       data-part={facts ? 0 : part}
-      data-compact={compact || page === 'votes.shares' ? '' : undefined}
+      data-screen={facts ? 1 : screen.length}
+      data-compact={compact ? '' : undefined}
     >
       <form
         class="book__sheet"
@@ -1784,94 +2104,53 @@ export function BookView({ store, t, locale }: BookViewProps) {
           locale={locale}
           t={t}
         />
-        <div class="book__body" inert={blocked}>
-          <div class="book__text">
-            <h1
-              class="book__question"
-              id={QUESTION_ID}
-              data-question
-              tabIndex={-1}
-            >
-              {question}
-            </h1>
-            <p class="book__explain" data-explain>
-              {explain}
-            </p>
-            {facts ? (
+        <div
+          class={`book__body${
+            // M7-20: the opening scrolls inside too, its purpose card open.
+            facts || (lone && page !== 'review' && page !== 'intro')
+              ? ''
+              : ' book__body--screen'
+          }`}
+          inert={blocked}
+        >
+          {facts ? (
+            <div class="book__text">
+              <h1
+                class="book__question"
+                id={pageId(QUESTION_ID, 'intro')}
+                data-question
+                tabIndex={-1}
+              >
+                {t('book.facts.title')}
+              </h1>
+              <p class="book__explain" data-explain>
+                {t('book.facts.explain')}
+              </p>
               <Facts locale={locale} t={t} />
-            ) : (
-              <>
-                {Answer !== null && (
-                  <Answer
-                    store={store}
-                    spec={spec}
-                    draft={draft}
-                    texts={shownTexts(draft, page)}
-                    rows={parts[part] ?? []}
-                    last={last}
-                    suggested={suggested}
-                    invalid={invalid}
-                    locale={locale}
-                    t={t}
-                    shown={shownParty}
-                    onShow={setChosenParty}
-                  />
-                )}
-                {spec.kind === 'intro' && <StartChoices store={store} t={t} />}
-                {spec.kind === 'lesson' && (
-                  <Lesson section={spec.section} locale={locale} t={t} />
-                )}
-                {spec.kind === 'check' && (
-                  <CheckList
-                    spec={spec}
-                    draft={draft}
-                    check={check}
-                    mix={mix}
-                    locale={locale}
-                    t={t}
-                  />
-                )}
-                {spec.kind === 'review' && (
-                  <Review store={store} part={part} locale={locale} t={t} />
-                )}
-                {error !== null && (
-                  <p
-                    class="book__error"
-                    data-book-error
-                    role="alert"
-                    id={ERROR_ID}
-                  >
-                    {errorText(error, locale, t)}
-                  </p>
-                )}
-                {told !== null && (
-                  <div class="book__narrator">
-                    <p data-narrator role="status">
-                      {t(`book.narrator.${told.variant}`, params)}
-                    </p>
-                    {FACT_SECTIONS.includes(spec.section) && (
-                      <button
-                        type="button"
-                        class="button button--small"
-                        data-action="open-fact"
-                        onClick={() => store.openFact()}
-                      >
-                        {t('book.facts.open')}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-          {!facts && spec.section === 'people.set' && (
-            <ExampleSet locale={locale} t={t} />
+            </div>
+          ) : (
+            <div class={lone ? 'book__stack book__stack--lone' : 'book__stack'}>
+              {screen.map((shown, index) => (
+                <PageBlock
+                  key={shown}
+                  store={store}
+                  page={shown}
+                  index={index}
+                  lone={lone}
+                  part={part}
+                  chosenParty={chosenParty}
+                  onChoose={setChosenParty}
+                  locale={locale}
+                  t={t}
+                />
+              ))}
+            </div>
           )}
-          {!(compact || page === 'votes.shares') && (
+          {figure && (
             <Figure
               key={facts ? 'facts' : `${page}#${part}`}
               motif={facts ? 'coin' : spec.motif}
-              pie={pie}
+              pie={null}
               palms={!facts && (page === 'intro' || page === 'review')}
               caption={caption}
               t={t}

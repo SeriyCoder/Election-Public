@@ -103,9 +103,10 @@ describe('M7-13 compact questionnaire', () => {
   });
   it('uses 70% only when unknown turnout prevents derivation', () => {
     for (const draft of [EMPTY_DRAFT]) {
+      // M7-19: derived from 70% and the ultra-Orthodox 85%.
       expect(built(draft).rules.overallTurnout).toEqual({
-        numerator: '7',
-        denominator: '10',
+        numerator: '595',
+        denominator: '829',
       });
     }
   });

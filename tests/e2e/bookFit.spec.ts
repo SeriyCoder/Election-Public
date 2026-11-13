@@ -1,10 +1,23 @@
 import type { Page } from '@playwright/test';
-import { back, book, bookAt, expect, next, openBook, test } from './helpers';
+import type { Locator } from '@playwright/test';
+import {
+  back,
+  book,
+  bookAt,
+  bookPage,
+  expect,
+  next,
+  openBook,
+  test,
+} from './helpers';
 
 /**
  * Section 14.6 page fit: every questionnaire page, part, error, narrator
  * reply, facts page and confirmation fits the required laptop sizes at 100%
  * and 125% zoom (125% is the same window at 1.25 device pixels per CSS pixel).
+ * M7-19: a screen stacking several pages scrolls inside its body instead; its
+ * head and navigation stay in the window, nothing overflows sideways and the
+ * body scrolls to every control.
  */
 const SIZES = [
   { label: '1280x720 100%', width: 1280, height: 720, scale: 1 },
@@ -31,7 +44,7 @@ function longName(
   return name.slice(0, length);
 }
 
-/** Layout problems of the page on screen; empty when it fits. */
+/** Layout problems of the screen on view; empty when it fits. */
 async function misfits(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const problems: string[] = [];
@@ -39,15 +52,23 @@ async function misfits(page: Page): Promise<string[]> {
     const width = window.innerWidth;
     const height = window.innerHeight;
     const doc = document.documentElement;
-    if (doc.scrollHeight > height + slack) {
+    const root = document.querySelector('[data-book]');
+    if (root === null) {
+      return ['no book'];
+    }
+    // M7-19: stacked screens and the review scroll inside the body.
+    const scrolling = root.querySelector<HTMLElement>('.book__body--screen');
+    const stacked =
+      Number(root.getAttribute('data-screen') ?? '1') > 1 || scrolling !== null;
+    const body = stacked ? scrolling : null;
+    if (stacked && body === null) {
+      problems.push('stacked screen without a scrolling body');
+    }
+    if (!stacked && doc.scrollHeight > height + slack) {
       problems.push(`page height ${doc.scrollHeight} > ${height}`);
     }
     if (doc.scrollWidth > width + slack) {
       problems.push(`page width ${doc.scrollWidth} > ${width}`);
-    }
-    const root = document.querySelector('[data-book]');
-    if (root === null) {
-      return ['no book'];
     }
     const name = (element: Element) =>
       `${element.tagName.toLowerCase()}${[...element.attributes]
@@ -62,8 +83,53 @@ async function misfits(page: Page): Promise<string[]> {
     const controls = [
       ...root.querySelectorAll('nav, button, input, select, textarea, a'),
     ].filter(shown);
+    if (body !== null) {
+      for (const frame of root.querySelectorAll('.book__head, .book__nav')) {
+        const box = frame.getBoundingClientRect();
+        if (box.top < -slack || box.bottom > height + slack) {
+          problems.push(`${name(frame)} leaves the window`);
+        }
+      }
+      if (body.scrollWidth > body.clientWidth + slack) {
+        const edge = body.getBoundingClientRect().left + body.clientWidth;
+        const wide = [...body.querySelectorAll('*')]
+          .filter((element) => element.getBoundingClientRect().right > edge)
+          .slice(0, 3)
+          .map(name);
+        problems.push(
+          `screen width ${body.scrollWidth} > ${body.clientWidth}: ${wide.join(' ')}`,
+        );
+      }
+      const frame = body.getBoundingClientRect();
+      if (frame.top < -slack || frame.bottom > height + slack) {
+        problems.push('screen body outside the window');
+      }
+      const scrolls = ['auto', 'scroll'].includes(
+        getComputedStyle(body).overflowY,
+      );
+      if (body.scrollHeight > body.clientHeight + slack && !scrolls) {
+        problems.push('screen body overflows without scrolling');
+      }
+    }
     for (const control of controls) {
       const box = control.getBoundingClientRect();
+      if (body !== null && body.contains(control)) {
+        // Reachable by scrolling the body: inside its scroll range and window width.
+        const frame = body.getBoundingClientRect();
+        const top = box.top - frame.top + body.scrollTop;
+        if (
+          top < -slack ||
+          top + box.height > body.scrollHeight + slack ||
+          box.height > body.clientHeight + slack ||
+          box.left < -slack ||
+          box.right > width + slack
+        ) {
+          problems.push(
+            `${name(control)} out of the screen's reach at ${Math.round(top)}`,
+          );
+        }
+        continue;
+      }
       if (
         box.top < -slack ||
         box.left < -slack ||
@@ -103,7 +169,9 @@ async function misfits(page: Page): Promise<string[]> {
         continue;
       }
       const style = getComputedStyle(element);
-      for (const overflow of [style.overflowX, style.overflowY]) {
+      for (const overflow of element === body
+        ? []
+        : [style.overflowX, style.overflowY]) {
         if (['auto', 'scroll', 'hidden', 'clip'].includes(overflow)) {
           problems.push(`${name(element)} has overflow ${overflow}`);
         }
@@ -126,12 +194,12 @@ async function expectFit(page: Page, label: string) {
   expect.soft(await misfits(page), `${label} ${where}`).toEqual([]);
 }
 
-async function choose(page: Page, choice: string) {
-  await page.locator(`[data-book-choice="${choice}"]`).check();
+async function choose(block: Locator, choice: string) {
+  await block.locator(`[data-book-choice="${choice}"]`).check();
 }
 
-async function fillEmpty(page: Page, name: (index: number) => string) {
-  const fields = page.locator('input[data-book-field]');
+async function fillEmpty(block: Locator, name: (index: number) => string) {
+  const fields = block.locator('input[data-book-field]');
   const total = await fields.count();
   for (let index = 0; index < total; index += 1) {
     const field = fields.nth(index);
@@ -142,26 +210,31 @@ async function fillEmpty(page: Page, name: (index: number) => string) {
 
 /** A percent error on the first party, then a sum error on the last (M7-15: one page). */
 async function errorStates(page: Page, label: string) {
-  const first = page.locator('input[data-book-field]').first();
+  const compose = bookPage(page, 'compose');
+  const first = compose.locator('input[data-book-field]').first();
   const kept = await first.inputValue();
   await first.fill('150');
   await page.locator('[data-action="book-next"]').click();
-  await expect(page.locator('[data-book-error]')).toBeVisible();
+  await expect(compose.locator('[data-book-error]')).toBeVisible();
   await expectFit(page, `${label} percent error`);
   await first.fill(kept);
-  const last = page.locator('input[data-book-field]').last();
+  const last = compose.locator('input[data-book-field]').last();
   const before = await last.inputValue();
   await last.fill('99');
   await page.locator('[data-action="book-next"]').click();
-  await expect(page.locator('[data-book-error]')).toBeVisible();
-  await expect(book(page)).toHaveAttribute('data-page', 'compose');
+  await expect(compose.locator('[data-book-error]')).toBeVisible();
+  // M7-19: compose stays on the turnout screen it shares.
+  await expect(book(page)).toHaveAttribute('data-page', 'turnout');
   await expectFit(page, `${label} sum error`);
   await last.fill(before);
 }
 
 type Walk = 'heavy' | 'catalog';
 
-/** Answers the page on screen the way the walk needs, checking extra states. */
+/**
+ * Answers one page block of the screen on view the way the walk needs,
+ * checking extra states.
+ */
 async function answer(
   page: Page,
   walk: Walk,
@@ -170,54 +243,67 @@ async function answer(
   groupNameLength: number,
 ) {
   const heavy = walk === 'heavy';
+  const block = bookPage(page, key);
   if (key === 'parties.count') {
-    await page.locator('[data-book-field]').first().fill('10');
-    await expect(page.locator('[data-narrator]')).toBeVisible();
+    await block.locator('[data-book-field]').first().fill('10');
+    await expect(block.locator('[data-narrator]')).toBeVisible();
     await expectFit(page, `${label} narrator`);
-    await page.locator('[data-action="open-fact"]').click();
+    await block.locator('[data-action="open-fact"]').click();
     await expect(book(page)).toHaveAttribute('data-page', 'facts');
     await expectFit(page, `${label} facts`);
     await page.locator('[data-action="close-fact"]').click();
     await expect(book(page)).toHaveAttribute('data-page', 'parties.count');
   } else if (key === 'parties.naming') {
     if (!heavy) {
-      await page.locator('[data-book-choice="example"]').click();
+      await block.locator('[data-book-choice="example"]').click();
       await expect(page.locator('[role="alertdialog"]')).toBeVisible();
       await expectFit(page, `${label} example confirmation`);
       await page.locator('[data-action="book-cancel"]').click();
       await expect(page.locator('[role="alertdialog"]')).toHaveCount(0);
     }
-    await choose(page, heavy ? 'own' : 'catalog');
+    await choose(block, heavy ? 'own' : 'catalog');
   } else if (key === 'parties.names' && heavy) {
-    await fillEmpty(page, (n) => longName(`Партия ${(n + 1) / 2}`, true));
+    await fillEmpty(block, (n) => longName(`Партия ${(n + 1) / 2}`, true));
   } else if (key === 'people.set') {
-    await choose(page, heavy ? 'own' : 'example');
+    await choose(block, heavy ? 'own' : 'example');
   } else if (key === 'people.count' && heavy) {
-    await page.locator('[data-book-field]').first().fill('8');
+    await block.locator('[data-book-field]').first().fill('8');
   } else if (key === 'people.names' && heavy) {
-    await fillEmpty(page, (n) =>
+    await fillEmpty(block, (n) =>
       longName(`Группа${(n + 1) / 2}`, false, groupNameLength),
     );
   } else if (key === 'coalitions' && heavy) {
-    await expect(page.locator('.directed-relations__pages')).toHaveCount(0);
-    const selector = page.locator('.directed-relations select');
+    await expect(block.locator('.directed-relations__pages')).toHaveCount(0);
+    const selector = block.locator('.directed-relations select');
     await expect(selector.locator('option')).toHaveCount(10);
     for (let party = 1; party <= 10; party += 1) {
       await selector.selectOption(`P${party}`);
-      await expect(page.locator('[data-refusal]')).toHaveCount(18);
+      await expect(block.locator('[data-refusal]')).toHaveCount(18);
       await expectFit(page, `${label} selected party ${party}`);
     }
   } else if (key === 'growth' && !heavy) {
-    await fillEmpty(page, () => '3');
-    await expect(page.locator('[data-growth-warning]')).toHaveCount(7);
+    await fillEmpty(block, () => '3');
+    await expect(block.locator('[data-growth-warning]')).toHaveCount(7);
     await expectFit(page, `${label} all unusual growth`);
-    await fillEmpty(page, () => '0');
+    await fillEmpty(block, () => '0');
   } else if (key === 'compose' && heavy) {
     await errorStates(page, label);
   }
 }
 
-/** Walks the whole book, checking the fit of every page and part. */
+/** The page keys stacked on the screen on view, in order. */
+async function screenKeys(page: Page): Promise<string[]> {
+  return book(page)
+    .locator('[data-book-page]')
+    .evaluateAll((list) =>
+      list.map((block) => block.getAttribute('data-book-page') ?? ''),
+    );
+}
+
+/**
+ * Walks the whole book, checking the fit of every screen and part. The set
+ * holds every page key met and every `first page#part` on view.
+ */
 async function walkBook(
   page: Page,
   walk: Walk,
@@ -226,11 +312,22 @@ async function walkBook(
 ) {
   await openBook(page);
   const seen = new Set<string>();
+  const answered = new Set<string>();
   for (let turns = 0; turns < 260; turns += 1) {
     const where = await bookAt(page);
-    const key = (await book(page).getAttribute('data-page')) ?? '';
-    const names = key === 'parties.names' || key === 'people.names';
-    if (!seen.has(names ? where : key)) {
+    // A choice can add pages to the screen on view (own groups), so answer
+    // until every block of the screen is answered.
+    for (let round = 0; round < 10; round += 1) {
+      const keys = await screenKeys(page);
+      const lone = keys.length === 1;
+      const key = keys.find(
+        (shown) => !answered.has(lone && /names$/.test(shown) ? where : shown),
+      );
+      if (key === undefined) {
+        break;
+      }
+      answered.add(lone && /names$/.test(key) ? where : key);
+      answered.add(key);
       seen.add(key);
       await answer(page, walk, key, label, groupNameLength);
     }
@@ -268,30 +365,32 @@ test.describe('questionnaire page fit', () => {
           'parties.names#1',
           'people.about',
           'people.mix',
-          'people.names#0',
-          'turnout#0',
-          'votes.shares#0',
-          'compose#0',
-          'votes.check#0',
-          'growth#0',
+          'people.count',
+          'people.names',
+          'turnout',
+          'votes.shares',
+          'compose',
+          'votes.check',
+          'growth',
           'coalitions',
+          // M7-19: the stacked screens, each on its first page.
+          'parties.count#0',
+          'people.set#0',
+          'turnout#0',
+          'votes.check#0',
+          'coalitions#0',
         ]) {
           expect(seen.has(key), key).toBe(true);
         }
         for (const key of [
+          'parties.count#1',
+          'people.set#1',
           'turnout#1',
-          'votes.shares#1',
-          'compose#1',
           'votes.check#1',
-          'growth#1',
+          'coalitions#1',
         ]) {
-          expect(seen.has(key), `${key} (M7-15: one screen)`).toBe(false);
+          expect(seen.has(key), `${key} (M7-19: a stacked screen)`).toBe(false);
         }
-        expect(seen.has('people.names#1'), 'eight groups on one part').toBe(
-          false,
-        );
-        expect(seen.has('coalitions#0')).toBe(true);
-        expect(seen.has('coalitions#1')).toBe(false);
         expect([...seen].some((key) => /^coalitions\./.test(key))).toBe(false);
       });
 
@@ -354,22 +453,32 @@ test.describe('questionnaire motion', () => {
     page,
   }) => {
     await openBook(page);
+    let drawn = 0;
     for (let turn = 0; turn < 3; turn += 1) {
       await next(page);
       for (const action of ['book-back', 'book-next', 'book-skip']) {
         await expect(page.locator(`[data-action="${action}"]`)).toBeEnabled();
       }
       const motion = await drawingMotion(page);
-      expect(motion.length, await bookAt(page)).toBeGreaterThan(0);
+      // M7-19: only a screen holding one page shows a drawing.
+      if ((await book(page).getAttribute('data-screen')) === '1') {
+        expect(motion.length, await bookAt(page)).toBeGreaterThan(0);
+        drawn += 1;
+      } else {
+        await expect(page.locator('[data-motif]')).toHaveCount(0);
+      }
       for (const { end, iterations } of motion) {
         expect(iterations).toBeLessThanOrEqual(2);
         expect(end).toBeLessThanOrEqual(2000);
       }
     }
+    expect(drawn).toBeGreaterThan(0);
     await back(page);
     await back(page);
     await expect(book(page)).toHaveAttribute('data-page', 'parties.count');
-    await page.locator('[data-action="open-fact"]').click();
+    await bookPage(page, 'parties.count')
+      .locator('[data-action="open-fact"]')
+      .click();
     await expect(page.locator('[data-side="lily"]')).toBeVisible();
     const coin = await drawingMotion(page);
     expect(coin.length).toBeGreaterThan(0);
@@ -381,14 +490,21 @@ test.describe('questionnaire motion', () => {
     test('shows the final drawing at once', async ({ page }) => {
       await openBook(page);
       expect(await bookMotion(page), 'intro').toBe(0);
+      let drawn = 0;
       for (let turn = 0; turn < 3; turn += 1) {
         await next(page);
         expect(await bookMotion(page), await bookAt(page)).toBe(0);
+        // M7-19: only a screen holding one page shows a drawing.
+        if ((await page.locator('[data-motif]').count()) === 0) {
+          continue;
+        }
+        drawn += 1;
         const opacity = await page
           .locator('[data-motif]')
           .evaluate((element) => getComputedStyle(element).opacity);
         expect(opacity).toBe('1');
       }
+      expect(drawn).toBeGreaterThan(0);
     });
   });
 });

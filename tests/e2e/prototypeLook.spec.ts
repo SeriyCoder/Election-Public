@@ -104,9 +104,11 @@ test.describe('M7-14 prototype look', () => {
       (element) => getComputedStyle(element).backgroundColor,
     );
     expect(red).not.toBe(calm);
+    // M7-20: with only two parties a lock would break the min-two rule.
     const lock = page.locator('[data-lock-vote="P1"]');
     await lock.click();
-    await expect(lock).toHaveAttribute('aria-pressed', 'true');
+    await expect(lock).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('[data-lock-hint]').first()).toBeVisible();
   });
 
   test('keeps the Hebrew workspace right-to-left inside its cards without overflow', async ({

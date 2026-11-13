@@ -11,12 +11,12 @@ import {
 } from './helpers';
 
 const SEATS = {
-  likud: '31',
-  'yesh-atid': '30',
+  likud: '30',
+  'yesh-atid': '29',
   avoda: '11',
-  'religious-zionism': '14',
-  shas: '18',
-  raam: '16',
+  'religious-zionism': '15',
+  shas: '20',
+  raam: '15',
 };
 
 test.describe('Israeli educational example', () => {

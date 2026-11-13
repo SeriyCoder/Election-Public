@@ -22,6 +22,12 @@ import {
   type SupporterBasis,
 } from '../engine/supporterTurnout';
 import type { PanelEdit } from '../engine/panel';
+import {
+  alignPanelVotes,
+  panelPercent,
+  readPanel,
+  rebuildPanelBasis,
+} from '../engine/panel';
 import type { CompositionTarget } from '../engine/composition';
 import type { CriticalColor, CriticalSets } from '../engine/futureRange';
 import {
@@ -44,12 +50,15 @@ import {
   type ValidationResult,
 } from '../engine/schema';
 import type { Locale } from '../i18n';
-import { DEFAULT_LOCALE, isLocale } from '../i18n';
+import { DEFAULT_LOCALE, isLocale, LOCALES } from '../i18n';
 import {
   alignComposition,
+  alignShares,
   bookPages,
   buildBook as buildFromBook,
+  canLockAnother,
   confirmPage,
+  defaultLocks,
   EMPTY_BOOK,
   EMPTY_DRAFT,
   editPage,
@@ -61,6 +70,7 @@ import {
   partError,
   partyIds,
   previousPage,
+  screenOf,
   takesAnswer,
   type BookConfirm,
   type BookState,
@@ -71,6 +81,7 @@ import {
   startExample,
   translateExampleNames,
   translateExampleScenario,
+  translateExampleTitles,
   type StartExampleId,
 } from './startExamples';
 import { EXAMPLE_LISTS } from './catalog';
@@ -96,6 +107,10 @@ export interface PanelSession {
   readonly experiment: SupporterBasis | null;
   readonly targets: Readonly<Record<string, string>>;
   readonly labels: Readonly<Record<string, number>>;
+  /** Party-share locks once touched; null keeps the default locks (M7-20). */
+  readonly voteLocks: readonly string[] | null;
+  /** Composition-cell locks once touched; null keeps the defaults (M7-20). */
+  readonly cellLocks: readonly string[] | null;
   readonly custom: readonly {
     readonly key: string;
     readonly partyIds: readonly string[];
@@ -113,6 +128,8 @@ const EMPTY_PANEL: PanelSession = {
   experiment: null,
   targets: {},
   labels: {},
+  voteLocks: null,
+  cellLocks: null,
   custom: [],
   tiles: null,
   favourites: [],
@@ -166,6 +183,8 @@ export interface AppState {
   readonly pendingDelete: PendingDelete | null;
   /** Rebalance locks for group shares, weights and party shares. UI only. */
   readonly locks: readonly string[];
+  /** True while the last lock attempt was refused by the min-2 rule (M7-20). */
+  readonly lockNotice: boolean;
   /** Party IDs ticked for chosen-coalition evaluation, in tick order. UI only. */
   readonly coalitionSelection: readonly string[];
   /** Party sets followed on the future view, in tick order, at most three. UI only. */
@@ -255,6 +274,10 @@ export interface Store {
   confirmDelete(repair: Repair): boolean;
   loadPreset(id: PresetId): void;
   toggleLock(key: string): void;
+  /** Stores the touched lock rows of a questionnaire page (M7-20). */
+  setBookLocks(key: string, rows: readonly number[]): void;
+  /** Aligns party shares to 100% with the current locks; false when refused. */
+  alignPartyShares(): boolean;
   /** Returns false and leaves the input unchanged when the engine refuses. */
   rebalanceShares(): boolean;
   rebalanceWeights(groupId: string): boolean;
@@ -302,18 +325,20 @@ export interface Store {
   getProjectionSource(): Scenario | null;
   /** Shows the questionnaire where it was left, answers kept. */
   openBook(): void;
-  /** Types or chooses one value on the current page. */
-  answerBook(index: number, text: string): void;
-  /** Confirms a valid page and turns to the next; false shows the error. */
+  /** Types or chooses one value on a page of the current screen (default: its first page). */
+  answerBook(index: number, text: string, page?: PageKey): void;
+  /** Confirms a valid screen and turns to the next; false shows the error. */
   bookNext(): boolean;
   bookBack(): void;
-  /** Turns to a page of the current page list; other keys are ignored. */
+  /** Turns to the screen holding a page of the current page list; other keys are ignored. */
   bookGoTo(page: PageKey): void;
   /**
    * Aligns one party's composition on the compose page exactly to 100%; the
    * `locked` group positions keep their values.
    */
   bookAlign(party: number, locked?: readonly number[]): void;
+  /** Aligns the vote shares exactly to 100%; `locked` positions keep their values. */
+  bookAlignShares(locked?: readonly number[]): void;
   openFact(): void;
   closeFact(): void;
   /** Opens the editor, building from the answers when there are any. */
@@ -391,6 +416,25 @@ function lockedIds(locks: readonly string[], prefix: string): string[] {
   return locks
     .filter((lock) => lock.startsWith(prefix))
     .map((lock) => lock.slice(prefix.length));
+}
+
+/** Whether this lock still leaves two unlocked positions in its family (M7-20). */
+function canAddStoreLock(state: AppState, key: string): boolean {
+  if (!isDraft(state.input)) return true;
+  const [kind, groupId = ''] = key.split(':');
+  const family =
+    kind === 'share'
+      ? { total: entities(state.input, 'group').length, head: 'share:' }
+      : kind === 'weight'
+        ? {
+            total: entities(state.input, 'party').length,
+            head: `weight:${groupId}:`,
+          }
+        : { total: entities(state.input, 'party').length, head: 'party:' };
+  const locked = state.locks.filter((lock) =>
+    lock.startsWith(family.head),
+  ).length;
+  return canLockAnother(family.total, locked);
 }
 
 /** Keeps only locks whose referenced entities still exist. */
@@ -484,6 +528,7 @@ export function createStore(
     language: initial.language ?? storedLanguage(storage) ?? DEFAULT_LOCALE,
     pendingDelete: initial.pendingDelete ?? null,
     locks: initial.locks ?? [],
+    lockNotice: false,
     coalitionSelection: initial.coalitionSelection ?? [],
     futureCoalitions: initial.futureCoalitions ?? [],
     panel: initial.panel ?? EMPTY_PANEL,
@@ -997,19 +1042,53 @@ export function createStore(
       commit({ ...state, editorPage: { key, index } });
     },
     setLanguage(locale) {
-      const draft = translateExampleNames(
+      // M7-20: untouched example names follow the interface language from any
+      // locale they were typed in, so an imported example never mixes languages.
+      const draft = LOCALES.reduce(
+        (current, from) => translateExampleNames(current, from, locale),
         state.book.draft,
-        state.language,
-        locale,
       );
+      const translate = <T>(
+        value: T,
+        rename: (current: T, from: Locale) => T,
+      ): T => LOCALES.reduce((current, from) => rename(current, from), value);
       const input = isDraft(state.input)
-        ? translateExampleScenario(state.input, state.language, locale)
+        ? translate(state.input as unknown, (current, from) =>
+            isDraft(current)
+              ? translateExampleScenario(current, from, locale)
+              : current,
+          )
         : state.input;
+      const baseline = isDraft(state.baseline)
+        ? translate(state.baseline as unknown, (current, from) =>
+            isDraft(current)
+              ? translateExampleScenario(current, from, locale)
+              : current,
+          )
+        : state.baseline;
+      // The frozen experiment basis draws every card and table of the future
+      // view; its names follow too, numbers and cohorts untouched.
+      const experiment =
+        state.panel.experiment === null
+          ? null
+          : {
+              ...state.panel.experiment,
+              source: translate(
+                state.panel.experiment.source,
+                (current, from) =>
+                  translateExampleTitles(current, from, locale),
+              ),
+            };
       commit(
         {
           ...state,
           input,
+          baseline,
           language: locale,
+          panel:
+            experiment === state.panel.experiment
+              ? state.panel
+              : { ...state.panel, experiment },
           ...(draft === state.book.draft
             ? {}
             : { book: { ...state.book, draft } }),
@@ -1076,10 +1155,44 @@ export function createStore(
       loadPreset(id);
     },
     toggleLock(key) {
-      const locks = state.locks.includes(key)
-        ? state.locks.filter((lock) => lock !== key)
-        : [...state.locks, key];
-      commit({ ...state, locks });
+      const locking = !state.locks.includes(key);
+      if (locking && !canAddStoreLock(state, key)) {
+        commit({ ...state, lockNotice: true });
+        return;
+      }
+      const locks = locking
+        ? [...state.locks, key]
+        : state.locks.filter((lock) => lock !== key);
+      commit({ ...state, locks, lockNotice: false });
+    },
+    setBookLocks(key, rows) {
+      setBook({
+        ...state.book,
+        locks: { ...state.book.locks, [key]: rows },
+      });
+    },
+    alignPartyShares() {
+      const data = readPanel(state.input);
+      if (data === null) return false;
+      const locks =
+        state.panel.voteLocks ??
+        defaultLocks(data.shares.map((share) => panelPercent(share))).map(
+          (at) => data.partyIds[at]!,
+        );
+      const aligned = alignPanelVotes(state.input, locks);
+      if (!aligned.ok) return false;
+      // A suspended linked basis would keep supporter turnout unavailable,
+      // so the alignment rebuilds it from the aligned numbers right away.
+      const model = (
+        aligned.draft as { linkedModel?: { state?: unknown } | null }
+      ).linkedModel;
+      const rebuilt =
+        model?.state === 'suspended' ? rebuildPanelBasis(aligned.draft) : null;
+      commit({
+        ...state,
+        input: rebuilt !== null && rebuilt.ok ? rebuilt.draft : aligned.draft,
+      });
+      return true;
     },
     rebalanceShares() {
       const input = state.input;
@@ -1342,23 +1455,47 @@ export function createStore(
     openBook() {
       commit({ ...state, screen: 'book' });
     },
-    answerBook(index, text) {
+    answerBook(index, text, page) {
       const { book } = state;
-      if (!takesAnswer(book.page)) {
+      const target = page ?? book.page;
+      if (
+        !takesAnswer(target) ||
+        !screenOf(book.draft, book.page).includes(target)
+      ) {
         return;
       }
       if (
-        book.page === 'parties.naming' &&
+        target === 'parties.naming' &&
         text === 'example' &&
         partyIds(book.draft).length !== EXAMPLE_LISTS.length
       ) {
         setBook({ ...book, confirm: 'example-count' });
         return;
       }
-      setBook({ ...book, draft: editPage(book.draft, book.page, index, text) });
+      setBook({ ...book, draft: editPage(book.draft, target, index, text) });
     },
     bookNext() {
       const { book } = state;
+      const screen = screenOf(book.draft, book.page);
+      if (screen.length > 1) {
+        const asked = screen.filter(takesAnswer);
+        if (asked.some((page) => pageError(book.draft, page) !== null)) {
+          setBook({ ...book, attempted: true });
+          return false;
+        }
+        let draft = book.draft;
+        let answered = book.answered;
+        for (const page of asked) {
+          draft = confirmPage(draft, page);
+          answered = withPage(answered, page);
+        }
+        const next = nextPage(draft, screen[screen.length - 1]!);
+        if (next === null) {
+          return false;
+        }
+        turnTo({ ...book, draft, answered }, next);
+        return true;
+      }
       const last = partCount(book.draft, book.page) - 1;
       if (book.page === 'review' || !takesAnswer(book.page)) {
         // The opening page, the lessons, the check and the review take no
@@ -1413,18 +1550,27 @@ export function createStore(
       }
       const previous = previousPage(book.draft, book.page);
       if (previous !== null) {
-        turnTo(book, previous, partCount(book.draft, previous) - 1);
+        const screen = screenOf(book.draft, previous);
+        turnTo(
+          book,
+          screen[0]!,
+          screen.length > 1 ? 0 : partCount(book.draft, previous) - 1,
+        );
       }
     },
     bookGoTo(page) {
       const { book } = state;
       if (bookPages(book.draft).includes(page)) {
-        turnTo(book, page);
+        turnTo(book, screenOf(book.draft, page)[0]!);
       }
     },
     bookAlign(party, locked = []) {
       const { book } = state;
       setBook({ ...book, draft: alignComposition(book.draft, party, locked) });
+    },
+    bookAlignShares(locked = []) {
+      const { book } = state;
+      setBook({ ...book, draft: alignShares(book.draft, locked) });
     },
     openFact() {
       setBook({ ...state.book, facts: true });
@@ -1434,17 +1580,19 @@ export function createStore(
     },
     skipBook() {
       let { book } = state;
-      const { draft, page } = book;
-      if (
-        takesAnswer(page) &&
-        !isSuggested(draft, page) &&
-        pageError(draft, page) === null
-      ) {
-        book = {
-          ...book,
-          draft: confirmPage(draft, page),
-          answered: withPage(book.answered, page),
-        };
+      const { draft } = book;
+      for (const page of screenOf(draft, book.page)) {
+        if (
+          takesAnswer(page) &&
+          !isSuggested(book.draft, page) &&
+          pageError(book.draft, page) === null
+        ) {
+          book = {
+            ...book,
+            draft: confirmPage(book.draft, page),
+            answered: withPage(book.answered, page),
+          };
+        }
       }
       if (book.answered.length === 0) {
         commit({

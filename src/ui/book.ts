@@ -182,6 +182,11 @@ export interface BookState {
   /** The part of the page on screen, from 0. */
   readonly part: number;
   readonly start?: BookStart | null;
+  /**
+   * Lock rows the person touched, by page key ('votes.shares') or
+   * 'compose:<partyId>'. An absent key keeps the default locks (M7-20).
+   */
+  readonly locks?: Readonly<Record<string, readonly number[]>>;
 }
 
 export const EMPTY_BOOK: BookState = {
@@ -655,6 +660,16 @@ const EXAMPLE_SHARE_PLACES = 2;
 /** Decimals of the example compositions. */
 const EXAMPLE_COMPOSITION_PLACES = 1;
 
+/** The suggested turnout of an example group (M7-19); others take the fixed one. */
+const GROUP_TURNOUT: Readonly<Record<string, string>> = {
+  haredi: '85',
+  arab: '70',
+};
+
+function groupTurnout(groupId: string): string {
+  return GROUP_TURNOUT[groupId] ?? FIXED_SUGGESTION.turnout ?? '70';
+}
+
 let describedCache: DescribedElectorate | null = null;
 
 /**
@@ -664,7 +679,7 @@ let describedCache: DescribedElectorate | null = null;
 function describedExample(): DescribedElectorate | null {
   describedCache ??= describeElectorate(
     examplePercents(null),
-    EXAMPLE_GROUPS.map(() => FIXED_SUGGESTION.turnout ?? '70'),
+    EXAMPLE_GROUPS.map(([groupId]) => groupTurnout(groupId)),
     EXAMPLE_GROUPS.map((_, group) => exampleRow(group)),
     EXAMPLE_SHARE_PLACES,
     EXAMPLE_COMPOSITION_PLACES,
@@ -679,6 +694,9 @@ function isFullExample(ctx: Context): boolean {
 
 function suggestion(ctx: Context, parsed: ParsedPage): readonly string[] {
   const { section, index } = parsed;
+  if (section === 'turnout') {
+    return [groupTurnout(ctx.groupIds[index] ?? '')];
+  }
   const fixed = FIXED_SUGGESTION[section];
   if (fixed !== undefined) {
     return [fixed];
@@ -825,16 +843,19 @@ export function bookPages(draft: BookDraft): readonly PageKey[] {
     'parties.count',
     'parties.naming',
     'parties.names',
-    'people.about',
-    'people.mix',
+    // M7-20: the group question with its names first; the lesson closes the
+    // chapter as the question's footnote, the mix example under it.
     'people.set',
     ...(ctx.set === 'own' ? ['people.count', 'people.names'] : []),
+    'people.about',
+    'people.mix',
     ...(ctx.groups === 0 ? [] : ['turnout']),
     'votes.shares',
     ...(ctx.groups === 0 ? [] : ['compose', 'votes.check', 'growth']),
-    'rules.seats',
-    'rules.threshold',
+    // M7-20: cooperation first, then the threshold, then the seat count.
     'coalitions',
+    'rules.threshold',
+    'rules.seats',
     'review',
   ];
 }
@@ -1583,11 +1604,9 @@ export function pageParts(
   return [all];
 }
 
-/** How many parts the page is shown in. */
+/** How many parts the page is shown in; the review is one screen (M7-19). */
 export function partCount(draft: BookDraft, page: PageKey): number {
-  return page === 'review'
-    ? reviewParts(draft).length
-    : pageParts(draft, page).length;
+  return pageParts(draft, page).length;
 }
 
 /** The range or choice error among the fields of one part, never a sum. */
@@ -1973,6 +1992,89 @@ export function alignComposition(
         (current, text, group) => editPage(current, page, group, text),
         draft,
       );
+}
+
+/** The vote shares scaled exactly to 100% with the `locked` rows kept (M7-19). */
+export function alignShares(
+  draft: BookDraft,
+  locked: readonly number[] = [],
+): BookDraft {
+  const aligned = scalePercents(shownTexts(draft, 'votes.shares'), 2, locked);
+  return aligned === null
+    ? draft
+    : aligned.reduce(
+        (current, text, at) => editPage(current, 'votes.shares', at, text),
+        draft,
+      );
+}
+
+/** The share a lock starts on: at most this percent, compared exactly. */
+export const SMALL_SHARE = '7';
+
+/** Positions of the percent texts at or below `SMALL_SHARE`, compared exactly. */
+export function smallShares(texts: readonly string[]): readonly number[] {
+  return texts.flatMap((text, at) =>
+    percentWithin(text, '0', SMALL_SHARE) === null ? [] : [at],
+  );
+}
+
+/** At least this many positions stay unlocked in every lock family (M7-20). */
+export const MIN_UNLOCKED = 2;
+
+/** Whether one more lock still leaves `MIN_UNLOCKED` positions open. */
+export function canLockAnother(total: number, locked: number): boolean {
+  return total - locked - 1 >= MIN_UNLOCKED;
+}
+
+/**
+ * The default locks of a percent row (M7-20): every value at or below
+ * `SMALL_SHARE` starts locked; when that would leave fewer than
+ * `MIN_UNLOCKED` positions open, only the exact zeros start locked, and
+ * zeros beyond that limit stay open too.
+ */
+export function defaultLocks(texts: readonly string[]): readonly number[] {
+  const small = smallShares(texts);
+  if (texts.length - small.length >= MIN_UNLOCKED) return small;
+  const zeros = texts.flatMap((text, at) =>
+    percentWithin(text, '0', '0') === null ? [] : [at],
+  );
+  if (texts.length - zeros.length >= MIN_UNLOCKED) return zeros;
+  const kept = texts.length - MIN_UNLOCKED;
+  return zeros.slice(0, kept < 0 ? 0 : kept);
+}
+
+/**
+ * The questionnaire's screens (M7-19): consecutive pages shown stacked and
+ * confirmed together. The pages, their keys and answers are unchanged.
+ */
+export function bookScreens(draft: BookDraft): readonly (readonly PageKey[])[] {
+  const pages = bookPages(draft);
+  // Turnout and the vote shares share a screen; without groups the shares open it.
+  const breaks: readonly PageKey[] = [
+    'intro',
+    'parties.count',
+    'parties.names',
+    'people.set',
+    pages.includes('turnout') ? 'turnout' : 'votes.shares',
+    'votes.check',
+    'coalitions',
+    'review',
+  ];
+  const screens: PageKey[][] = [];
+  for (const page of pages) {
+    const last = screens[screens.length - 1];
+    if (last === undefined || breaks.includes(page)) {
+      screens.push([page]);
+    } else {
+      last.push(page);
+    }
+  }
+  return screens;
+}
+
+/** The screen that holds the page, or the page alone when it is not listed. */
+export function screenOf(draft: BookDraft, page: PageKey): readonly PageKey[] {
+  return bookScreens(draft).find((screen) => screen.includes(page)) ?? [page];
 }
 
 /** The review chapters of each review part, packed in order while they fit. */

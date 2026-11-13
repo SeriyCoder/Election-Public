@@ -114,6 +114,35 @@ const EIGHT_NAMES: Readonly<
   },
 };
 
+/** The description key of each eight-party example slot (M7-19). */
+const EIGHT_ABOUT: readonly (string | null)[] = [
+  'catalog.party.likud.about',
+  'book.example.about.religiousZionism',
+  'book.example.about.nationalCamp',
+  null,
+  'book.example.about.beiteinu',
+  'book.example.about.left',
+  null,
+  'book.example.about.arabs',
+];
+
+/**
+ * The description key under a typed party name, while the field still holds
+ * the eight-party example's own name for that slot; otherwise null.
+ */
+export function exampleAbout(
+  locale: Locale,
+  slot: number,
+  name: string,
+): string | null {
+  const entry = EIGHT_NAMES[locale].parties[slot];
+  const about = EIGHT_ABOUT[slot] ?? null;
+  if (entry === undefined || about === null || name.trim() === '') {
+    return null;
+  }
+  return entry.split('|')[1]?.trim() === name.trim() ? about : null;
+}
+
 /**
  * The user's "New 8 parties" file as the texts typed on each page, in page
  * order, with the names in the given interface language.
@@ -131,10 +160,10 @@ function eight(locale: Locale): Readonly<Record<PageKey, readonly string[]>> {
 }
 
 const EIGHT_VALUES: Readonly<Record<PageKey, readonly string[]>> = {
-  turnout: list('50 60 65 80 65 80 60'),
-  'votes.shares': list('19 12 19 8 6 12 10 14'),
+  turnout: list('77.25 78.25 68.79 80.62 80.01 80.03 69.12'),
+  'votes.shares': list('21.85 14.7 22.77 7.37 6.2 6.73 6 14.38'),
   compose: list(
-    '30 39 15 10 0 0 6 5 5 10 80 0 0 0 65 25 5 5 0 0 0 8 10 75 0 1 1 5 75 10 0 10 0 0 5 60 20 5 0 10 0 5 0 0 10 0 0 90 0 2 0 0 0 93 0 5',
+    '31.2 38.79 14.66 9.38 0 0 5.97 5 5 10 80 0 0 0 65 25 5 5 0 0 0 8.38 10.05 74.58 0 1 0.96 5.03 76.6 9.64 0 8.94 0 0 4.82 61.06 19.53 4.83 0 9.7 0 4.88 0 0 10 0 0 90 0 2.22 0 0 0 92.76 0 5.02',
   ),
   growth: list('0.25 0.5 0.75 1 1.5 2.5 0.5'),
   'rules.seats': ['120'],
@@ -251,4 +280,42 @@ export function translateExampleScenario(
     }
   }
   return next;
+}
+
+/**
+ * The same renames applied to a frozen scenario copy (M7-20): only `name`
+ * strings that still exactly match the example's names in `from` change to
+ * the names in `to`; everything else, numbers included, is untouched. Used
+ * for the supporter experiment's frozen basis, which the edit functions must
+ * not rebuild.
+ */
+export function translateExampleTitles<
+  T extends {
+    readonly parties: readonly { readonly name?: unknown }[];
+    readonly groups: readonly { readonly name?: unknown }[];
+  },
+>(scenario: T, from: Locale, to: Locale): T {
+  if (from === to) return scenario;
+  let changed = false;
+  const renamed = (kind: 'parties' | 'groups', list: T['parties']) => {
+    const source = names(EIGHT_NAMES[from][kind]);
+    const target = names(EIGHT_NAMES[to][kind]);
+    const renames = new Map<string, string>();
+    for (let index = 1; index < source.length; index += 2) {
+      const name = source[index]!.trim();
+      if (name !== '') renames.set(name, target[index]!);
+    }
+    return list.map((entity) => {
+      const next =
+        typeof entity.name === 'string'
+          ? renames.get(entity.name.trim())
+          : undefined;
+      if (next === undefined) return entity;
+      changed = true;
+      return { ...entity, name: next };
+    });
+  };
+  const parties = renamed('parties', scenario.parties);
+  const groups = renamed('groups', scenario.groups);
+  return changed ? { ...scenario, parties, groups } : scenario;
 }

@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import type { Json } from '../engine/helpers/scenarios';
 import {
   book,
+  bookPage,
   expect,
   lastBlobText,
   next,
@@ -12,16 +13,25 @@ import {
   toBuild,
 } from './helpers';
 
-/** The page keys met with Next from the opening page to the review. */
-async function walkKeys(page: Page): Promise<string[]> {
-  const keys: string[] = [];
+/**
+ * The screens met with Next from the opening page to the review, each as the
+ * page keys it stacks (M7-19).
+ */
+async function walkScreens(page: Page): Promise<string[][]> {
+  const screens: string[][] = [];
   for (let turns = 0; turns < 60; turns += 1) {
     const key = (await book(page).getAttribute('data-page')) ?? '';
-    if (keys[keys.length - 1] !== key) keys.push(key);
-    if (key === 'review') return keys;
+    const shown = await book(page)
+      .locator('[data-book-page]')
+      .evaluateAll((list) =>
+        list.map((block) => block.getAttribute('data-book-page') ?? ''),
+      );
+    expect(shown[0]).toBe(key);
+    if (screens[screens.length - 1]?.[0] !== key) screens.push(shown);
+    if (key === 'review') return screens;
     await next(page);
   }
-  throw new Error(`never reached the review: ${keys.join(', ')}`);
+  throw new Error(`never reached the review: ${screens.join(' | ')}`);
 }
 
 /** Whether every element matching the selector lies inside the window. */
@@ -51,23 +61,15 @@ test.describe('M7-15 natural compact questionnaire', () => {
     page,
   }) => {
     await openBook(page);
-    expect(await walkKeys(page)).toEqual([
-      'intro',
-      'parties.count',
-      'parties.naming',
-      'parties.names',
-      'people.about',
-      'people.mix',
-      'people.set',
-      'turnout',
-      'votes.shares',
-      'compose',
-      'votes.check',
-      'growth',
-      'rules.seats',
-      'rules.threshold',
-      'coalitions',
-      'review',
+    expect(await walkScreens(page)).toEqual([
+      ['intro'],
+      ['parties.count', 'parties.naming'],
+      ['parties.names'],
+      ['people.set', 'people.about', 'people.mix'],
+      ['turnout', 'votes.shares', 'compose'],
+      ['votes.check', 'growth'],
+      ['coalitions', 'rules.threshold', 'rules.seats'],
+      ['review'],
     ]);
     await toBuild(page);
     await page.locator('[data-action="book-build"]').click();
@@ -94,29 +96,35 @@ test.describe('M7-15 natural compact questionnaire', () => {
   }) => {
     await openBook(page);
     await nextTo(page, 'compose');
-    const shown = page.locator('[data-compose-shown]');
+    // M7-19: compose is the last page of the turnout screen, which scrolls.
+    const compose = bookPage(page, 'compose');
+    const shown = compose.locator('[data-compose-shown]');
     await expect(shown).toHaveAttribute('data-compose-shown', '0');
-    await expect(page.locator('[data-book-cell]')).toHaveCount(7);
-    expect(await allInWindow(page, '[data-book-cell]')).toBe(true);
-    await page.locator('[data-action="compose-next"]').click();
-    await page.locator('[data-action="compose-next"]').click();
+    await expect(compose.locator('[data-book-cell]')).toHaveCount(7);
+    await compose.locator('[data-book-cell]').last().scrollIntoViewIfNeeded();
+    expect(
+      await allInWindow(page, '[data-book-page="compose"] [data-book-cell]'),
+    ).toBe(true);
+    await compose.locator('[data-action="compose-next"]').click();
+    await compose.locator('[data-action="compose-next"]').click();
     await expect(shown).toHaveAttribute('data-compose-shown', '2');
-    await page
+    await compose
       .locator('[data-book-cell] input[type="text"]')
       .first()
       .fill('50');
-    await expect(page.locator('[data-remainder]')).toHaveAttribute(
+    await expect(compose.locator('[data-remainder]')).toHaveAttribute(
       'data-state',
       'over',
     );
-    await page.locator('[data-action="compose-previous"]').click();
+    await compose.locator('[data-action="compose-previous"]').click();
     await expect(shown).toHaveAttribute('data-compose-shown', '1');
     await page.locator('[data-action="book-next"]').click();
-    await expect(page.locator('[data-book-error]')).toBeVisible();
-    await expect(book(page)).toHaveAttribute('data-page', 'compose');
+    await expect(compose.locator('[data-book-error]')).toBeVisible();
+    await expect(book(page)).toHaveAttribute('data-page', 'turnout');
+    await expect(compose).toBeVisible();
     await expect(shown).toHaveAttribute('data-compose-shown', '2');
-    await page.locator('[data-action="compose-align"]').click();
-    await expect(page.locator('[data-remainder]')).toHaveAttribute(
+    await compose.locator('[data-action="compose-align"]').click();
+    await expect(compose.locator('[data-remainder]')).toHaveAttribute(
       'data-state',
       'done',
     );
@@ -129,11 +137,12 @@ test.describe('M7-15 natural compact questionnaire', () => {
   }) => {
     await openBook(page);
     await nextTo(page, 'people.set');
-    await expect(page.locator('[data-set-group]')).toHaveCount(6);
-    await expect(page.locator('[data-set-group="knitted-kippot"]')).toHaveCount(
+    const set = bookPage(page, 'people.set');
+    await expect(set.locator('[data-set-group]')).toHaveCount(6);
+    await expect(set.locator('[data-set-group="knitted-kippot"]')).toHaveCount(
       0,
     );
-    await expect(page.locator('[data-set-note]')).toHaveCount(0);
+    await expect(set.locator('[data-set-note]')).toHaveCount(0);
     await expect(page.locator('[data-book-choice="none"]')).toHaveCount(0);
   });
 
@@ -142,20 +151,22 @@ test.describe('M7-15 natural compact questionnaire', () => {
   }) => {
     await openBook(page);
     await nextTo(page, 'turnout');
-    await expect(page.locator('[data-book-rate]')).toHaveCount(7);
-    expect(await allInWindow(page, '[data-book-rate]')).toBe(true);
-    await next(page);
-    await expect(book(page)).toHaveAttribute('data-page', 'votes.shares');
-    await expect(page.locator('[data-book-cell]')).toHaveCount(4);
-    await expect(page.locator('[data-shares-bar] [data-segment]')).toHaveCount(
-      4,
-    );
+    const turnoutRates = '[data-book-page="turnout"] [data-book-rate]';
+    await expect(page.locator(turnoutRates)).toHaveCount(7);
+    expect(await allInWindow(page, turnoutRates)).toBe(true);
+    // M7-19: the shares page shares the turnout screen.
+    const shares = bookPage(page, 'votes.shares');
+    await expect(shares).toBeVisible();
+    await expect(shares.locator('[data-book-cell]')).toHaveCount(4);
+    await expect(
+      shares.locator('[data-shares-bar] [data-segment]'),
+    ).toHaveCount(4);
     await nextTo(page, 'votes.check');
     await expect(page.locator('[data-check-row]')).toHaveCount(7);
     expect(await allInWindow(page, '[data-check-row]')).toBe(true);
-    await next(page);
-    await expect(book(page)).toHaveAttribute('data-page', 'growth');
-    expect(await allInWindow(page, '[data-book-rate]')).toBe(true);
+    const growthRates = '[data-book-page="growth"] [data-book-rate]';
+    await page.locator(growthRates).last().scrollIntoViewIfNeeded();
+    expect(await allInWindow(page, growthRates)).toBe(true);
     await nextTo(page, 'coalitions');
     await expect(page.locator('[data-rules-party]')).toBeVisible();
     await expect(page.locator('.directed-relations__pages')).toHaveCount(0);
@@ -177,7 +188,7 @@ test.describe('M7-15 natural compact questionnaire', () => {
   }) => {
     await openBook(page);
     await nextTo(page, 'growth');
-    await page
+    await bookPage(page, 'growth')
       .locator('[data-book-rate] input[type="text"]')
       .first()
       .fill('0,25');

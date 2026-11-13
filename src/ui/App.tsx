@@ -567,7 +567,7 @@ export function App({
             <li key={view}>
               <button
                 type="button"
-                class="views__item"
+                class={`views__item${view === 'future' ? ' views__item--cta' : ''}`}
                 data-view={view}
                 aria-current={view === state.view ? 'page' : undefined}
                 onClick={() => store.setView(view)}

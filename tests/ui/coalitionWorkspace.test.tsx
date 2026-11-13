@@ -119,10 +119,13 @@ describe('coalition workspace', () => {
 
   it('preserves party locks across edits and removes them on deletion or replacement', () => {
     const store = createStore({ input: workspaceParties() });
-    store.toggleLock('party:P1');
     store.toggleLock('party:P2');
+    // M7-20: a second lock would leave fewer than two parties unlocked.
+    store.toggleLock('party:P1');
+    expect(store.getState().locks).toEqual(['party:P2']);
+    expect(store.getState().lockNotice).toBe(true);
     store.updateInput((input) => ({ ...(input as Json), notes: 'changed' }));
-    expect(store.getState().locks).toEqual(['party:P1', 'party:P2']);
+    expect(store.getState().locks).toEqual(['party:P2']);
     store.updateInput((input) => {
       const draft = input as Json;
       return {
@@ -130,6 +133,9 @@ describe('coalition workspace', () => {
         parties: (draft.parties as Json[]).filter((party) => party.id !== 'P2'),
       };
     });
+    expect(store.getState().locks).toEqual([]);
+    store.setInput(workspaceParties());
+    store.toggleLock('party:P1');
     expect(store.getState().locks).toEqual(['party:P1']);
     store.setInput(workspaceParties());
     expect(store.getState().locks).toEqual([]);

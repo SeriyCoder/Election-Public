@@ -291,8 +291,8 @@ dolzhno byt yasno kto yavlaetsa prichinoi".
 ## M3 — Public Preview (needs separate approval) — resumed (2026-11-04)
 
 M3 resumed on 2026-11-04. M3-01 records the approved public-example decisions;
-M3-02 prepares both build targets and the manual-release workflow.
-M3-03 publishes a sanitized snapshot in a separate public repository and
+M3-02 prepares both build targets and the revised one-public-source-repository,
+manual-release workflow. M3-03 publishes a sanitized source snapshot and
 verifies the live link. By the user's explicit 2026-11-10 decision, the first
 non-commercial release may precede the full M3-05 English/Hebrew review; do not
 describe those translations as fully reviewed. M3-05 remains a post-release
@@ -311,8 +311,15 @@ can try the simulator. Its feedback decides what M4 and M5 contain.
   and real 1200 × 630 PNG, shared ru/en/he notice, manual Pages workflow.
   Independent gates: 3221 tests, 404 browser passes (48 project-scoped skips),
   types and lint; offline 458179 bytes. No GitHub upload or live deployment.
-- [ ] M3-03 Publish and verify the HTTPS link on desktop and phone browsers
+- [x] M3-03 Publish and verify the HTTPS link on desktop and phone browsers
   in ru/en/he, with results identical to the local build (§12 [M3])
+  Closed 2026-11-12: live at `https://seriycoder.github.io/Election-Public/`
+  from a sanitized MIT snapshot in public `Election-Public` (development
+  repository stays private). Live `index.html` equals a fresh local hosted
+  build except 15 template carriage returns, so results match in every
+  language and start. Desktop accepted by the user; phone, Firefox and Safari
+  moved to M3-07. Gates: 3221 tests, 404 browser passes (48 project-scoped
+  skips), types and lint.
 - [ ] M3-04 Launch kit: screenshots and post text (content only; direct
   change, no loop)
 - [ ] M3-05 Translation review: after the first release, a person reads every
@@ -324,7 +331,9 @@ can try the simulator. Its feedback decides what M4 and M5 contain.
   button with Israel, UK and Russia flags; decided with M3-05 (§14.1).
   M7-07 brings the default and early language choice forward; flag presentation
   and the publication review remain in M3
-
+- [ ] M3-07 Phone-size, real Firefox and real Safari checks of the live link
+  (follow-up of M3-03; the user accepted desktop as the release target on
+  2026-11-12)
 ## M4 — Analysis (revisit after M3 feedback) — on hold (2026-10-29)
 
 - [ ] M4-01 Multi-scenario comparison (≥3 snapshots)
@@ -852,3 +861,83 @@ requires separate approval.
   2026-11-04 audit): explicit panel rebuild of a suspended linked basis from
   current numbers, two-decimal display in panel fields, drawn slider tracks,
   population shown as two hoverable pies, hoverable group-pie slices
+- [x] M7-19 Design revision from the user's comments (2026-11-12). Local only:
+  no publication until the user asks; no personal data of the user in any
+  release. Contents:
+  1. Start page: the "8 parties (free names)" card tinted light blue and the
+     "questionnaire" card tinted too — safe-looking and attention-drawing.
+  2. "How many parties" and "how will we name them" on one questionnaire page,
+     one under the other.
+  3. Neutral one-line notes under the ready party names, including the free
+     names: "Likud without Bibi" gets the Likud note; "Religious Zionism" —
+     union of parties representing settlers and settlements beyond the Green
+     Line; "Other national camp" — centrist secular, market-oriented camp;
+     "Yisrael Beiteinu without Liberman" gets the Yisrael Beiteinu note;
+     "Democrats and left" — secular left, social-democratic; "Arabs" — group
+     of Arab parties, religious and secular, whose voters are Arab citizens
+     of Israel. All three languages; user approved neutral wording.
+  4. One page: what a voter group is, where a party gets its votes, how many
+     groups, and (below) how to name them.
+  5. One page: group turnout (defaults ultra-Orthodox 85%, Arabs 70%), vote
+     share of each party and each party's voter composition. Party-share rows
+     at or below 7% start locked on that page (unlockable); a closed lock is
+     visibly brighter.
+  6. One page: resulting voter structure and yearly group growth.
+  7. One page: seats in parliament, threshold and who will cooperate.
+  8. One page for all checks, each shown graphically, with a button under each
+     graphic back to its questionnaire section.
+  9. Goal statement at the start and on the simulation screen: the aim is to
+     find the coalitions possible under the current demographic balance, and
+     that the simulation tabs are built for it. Stated as a general thesis:
+     without cooperation of the two large secular parties, right and centrist,
+     a government that is neither religious-dependent nor Arab-dependent
+     cannot be formed, the future simulation shows the task grows harder, and
+     shared values are needed.
+  10. Coalitions tiles: a custom (manually created) tile can be edited after
+      creation — its members shown and changed, not only deleted.
+  Split into smaller items at `/1-memo` if the memo finds it too large.
+- [x] M7-20 Second design revision from the user's comments (2026-11-12).
+  Local only: no publication and no Git without an explicit request. Contents:
+  1. Opening: the purpose-and-hypothesis block always open as an accent card
+     (light background, 4 px bar, two short paragraphs, keywords emphasised);
+     the text states that demographics and sector turnout decide the outcome
+     and, as a hypothesis for discussion, that without a union of the two
+     large secular parties — right and centrist — a government independent of
+     religious or Arab parties is hard to form. The main call to action is a
+     saturated blue button "Заполнить анкету (8 партий)" / "Fill Out
+     Questionnaire (8 Parties)" / "מילוי שאלון (8 מפלגות)"; other start
+     actions become visually secondary.
+  2. Chapter 1: replace only the fifth party's description ("Наш дом Израиль
+     без Либера") with the user's exact RU/EN/HE wording about Russian-speaking
+     secular immigrants; other parties and the layout unchanged.
+  3. Chapter 2: the screen starts with the "which voter groups" question
+     carrying a footnote asterisk; the "what is a voter group" explanation
+     with its picture moves below as the footnote text.
+  4. Coalitions view: the top purpose block always open and prominent (card,
+     4 px bar, 15–16 px text, keyword emphasis), explaining demographics,
+     turnout, majority recalculation on left-side edits and the hypothesis,
+     noting the task gets harder in the future; plus a bright button
+     "Открыть Симулятор коалиций →" switching to the future view.
+  5. Coalitions tiles block: heading "Возможные коалиции" / "Possible
+     Coalitions" / "קואליציות אפשריות", a hint to tick up to four options and
+     check whether they survive sector growth and turnout change, a second
+     bright button to the simulator next to the selection, and a highlighted
+     "Симуляции коалиций" tab in the top bar.
+  6. Future view: replace the small caption with a prominent banner — the
+     user's exact Russian text about demographics and turnout as the two main
+     factors, the year slider and left-side turnout edits, and followed
+     coalitions gaining or losing the 61-seat majority.
+  All texts in RU/EN/HE including RTL; the user's quoted translations verbatim,
+  the rest translated by meaning; emphasis rendered safely without HTML in
+  translations; responsiveness and offline operation verified.
+  Closed 2026-11-13 with the user's mid-implement additions: coalition-card
+  captions grouped into members and the rest, revised example figures from the
+  user's updated file, default ≤7% locks with a zeros fallback on every lock
+  surface, the min-two-unlocked rule with its hint, the supporter-turnout
+  recovery button «Выровнять автоматически» with the overall base → current
+  turnout, chapter-2 and rules screen reorders, any-locale example-name
+  translation (frozen basis and baseline included) and labelled experiment
+  snapshots. Final gates: 3245 unit tests, typecheck/lint/format clean, 404
+  browser passes (48 skips); offline file within the 900000-byte budget.
+  Deviations are in `doc/work/archive/phase-4/M7-20-memo.md` and
+  `M7-20-test-plan.md`.

@@ -2,7 +2,15 @@ import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 import { runSeats } from '../../src/engine/run';
 import { parseScenarioJson, type Scenario } from '../../src/engine/schema';
-import { book, expect, nextTo, openBook, test, toBuild } from './helpers';
+import {
+  book,
+  bookPage,
+  expect,
+  nextTo,
+  openBook,
+  test,
+  toBuild,
+} from './helpers';
 
 /** M7-16: the opening page's ready examples, opened and leafed through. */
 function fixture(): Scenario {
@@ -25,12 +33,12 @@ function expectedSeats(scenario: Scenario): Record<string, string> {
 }
 
 const ISRAEL_SEATS = {
-  likud: '31',
-  'yesh-atid': '30',
+  likud: '30',
+  'yesh-atid': '29',
   avoda: '11',
-  'religious-zionism': '14',
-  shas: '18',
-  raam: '16',
+  'religious-zionism': '15',
+  shas: '20',
+  raam: '15',
 };
 
 async function workspaceSeats(page: Page): Promise<Record<string, string>> {
@@ -46,8 +54,9 @@ async function workspaceSeats(page: Page): Promise<Record<string, string>> {
   );
 }
 
-async function inputs(page: Page): Promise<string[]> {
-  return page
+/** The answer fields of one page block on the screen (M7-19). */
+async function inputs(page: Page, key: string): Promise<string[]> {
+  return bookPage(page, key)
     .locator('input[data-book-field]')
     .evaluateAll((list) =>
       list.map((field) => (field as HTMLInputElement).value),
@@ -109,30 +118,30 @@ test.describe('M7-16 ready examples at the start', () => {
     await openBook(page);
     await page.locator('[data-start="eight"][data-start-mode="book"]').click();
     await expect(book(page)).toHaveAttribute('data-page', 'parties.count');
-    expect(await inputs(page)).toEqual(['8']);
+    expect(await inputs(page, 'parties.count')).toEqual(['8']);
     await nextTo(page, 'turnout');
-    expect(await inputs(page)).toEqual([
-      '50',
-      '60',
-      '65',
-      '80',
-      '65',
-      '80',
-      '60',
+    expect(await inputs(page, 'turnout')).toEqual([
+      '77.25',
+      '78.25',
+      '68.79',
+      '80.62',
+      '80.01',
+      '80.03',
+      '69.12',
     ]);
     await nextTo(page, 'votes.shares');
-    expect(await inputs(page)).toEqual([
-      '19',
-      '12',
-      '19',
-      '8',
+    expect(await inputs(page, 'votes.shares')).toEqual([
+      '21.85',
+      '14.7',
+      '22.77',
+      '7.37',
+      '6.2',
+      '6.73',
       '6',
-      '12',
-      '10',
-      '14',
+      '14.38',
     ]);
     await nextTo(page, 'growth');
-    expect(await inputs(page)).toHaveLength(7);
+    expect(await inputs(page, 'growth')).toHaveLength(7);
     await nextTo(page, 'coalitions');
     await toBuild(page);
     await page.locator('[data-action="book-build"]').click();
