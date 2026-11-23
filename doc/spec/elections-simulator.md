@@ -1928,11 +1928,17 @@ way back to turnout. The opening and the Coalitions view show a short purpose
 statement (`src/ui/Purpose.tsx`); since M7-20 the card is always open — an
 accent card with a 4 px leading bar and marker-based keyword emphasis
 rendered as text nodes — stating that demographics and sector turnout
-largely set the outcome and, as a hypothesis of
-the example and not a forecast, that without a union of the two
-large secular parties of the right and the centre a government that is
-neither religious nor dependent on Arab parties is hard to form. The
-eight-party card and its "Заполнить анкету" button are tinted, the example
+largely set the outcome. The larger "Hypothesis for Discussion" heading is
+followed by two explicit, user-approved paths (not a forecast): an alliance
+of the two large secular parties, right and centre; or including Arab
+parties as equal, legitimate partners in a centrist government. The text
+states that demographic trends make a secular government independent of
+religious parties harder without new coalition frameworks, and the note
+still says that the simulator calculates seats and compatibility rules but
+draws no political conclusions. The
+eight-party card is a separate framed recommendation for a first visit:
+keep its defaults, walk all settings and use the three remaining start
+options as secondary alternatives. Its "Заполнить анкету" button is tinted, the example
 names carry neutral descriptions, closed locks are brighter, and a custom
 Coalitions tile can be edited (✎) as well as deleted.
 
@@ -1964,6 +1970,40 @@ three snapshots are titled and explained: the middle card names the changed
 supporter turnout as the turnout-simulation result and carries the overall
 turnout before → after; the third card names the combined new turnout and
 demographic shift over the chosen years.
+
+As built in M7-22 (2026-11-23): before the first questionnaire view, a
+once-per-origin native welcome dialog sits above the app with a blurred,
+translucent backdrop. It carries an original inline SVG sun with
+person-like rays and respectful flat/geometric clues for Israel's varied
+society; the drawing is decorative, carries no party colours or voter
+statistics, and uses no external resource. Three exact headings appear
+together in RU, HE and EN, with only the demographic keyword highlighted and
+the Hebrew copy explicitly RTL. Closing by the 40×40 top-right `×`, backdrop,
+Escape or one of the three language buttons records
+`elections-simulator.welcomeSeen.v1`; a language button also changes the
+interface through the normal store action. The owned key is removed by
+"Clear saved data", so the next reload can show the welcome again. If browser
+storage is blocked, the dialog still closes for the current page but may
+appear on a later reload. The opening questionnaire's "Вступление" label is
+a button that reopens the same dialog without clearing the seen marker.
+
+As built in M7-21 (2026-11-22): the possible-coalitions card is the first
+block in the Coalitions view's right column, before the per-group vote and
+population graphics. The card heading toggles a fixed, scrollable full-screen
+view; the expanded parent card contains both the coalition tiles and the
+directed rules ("who will not sit together"), centered in a bounded, top-aligned
+layout, and the heading toggles back to "Standard view". Compact mode hides
+the favourite-only filter and "Nearest" reset; "Add" still refills missing
+tiles one at a time. Every tile has an explicit "Enlarge" action; a custom
+tile keeps its pencil inside the enlarged detail. The simulator action is
+visually primary. Until the person first touches a future checkbox, the
+first two of the four displayed tiles are followed on Coalition simulations;
+the first manual toggle freezes the exact selection (including an empty one)
+for that scenario/session. The future view's bright fixed-agenda card is
+called "Model scope (with today's agenda unchanged)" and explicitly states
+that parties, priorities and the political agenda stay fixed while only
+simulated demographics/turnout change. A separate discussion hypothesis is
+not shown inside this simulator card.
 
 ### 14.6 Visual World And Page Fit
 

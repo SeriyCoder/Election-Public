@@ -182,7 +182,7 @@ test.describe('M7-12 accepted integrated panel', () => {
       ),
     ).toEqual([]);
   });
-  test('removes all tiles, refills nearest and keeps custom labels and directed decisions', async ({
+  test('removes all tiles, refills with Add and keeps custom labels and directed decisions', async ({
     page,
   }) => {
     await openApp(page, 'en');
@@ -192,7 +192,8 @@ test.describe('M7-12 accepted integrated panel', () => {
     for (let n = 0; n < 4; n += 1)
       await page.locator('[data-tile-remove]').first().click();
     await expect(page.locator('[data-coalition-tile]')).toHaveCount(0);
-    await page.locator('[data-action="tiles-nearest"]').click();
+    for (let n = 0; n < 4; n += 1)
+      await page.locator('[data-action="tile-add"]').click();
     await expect(page.locator('[data-coalition-tile]')).toHaveCount(4);
     await page.locator('[data-refusal="P1:P2"]').click();
     await expect(page.locator('[data-refusal="P1:P2"]')).toHaveAttribute(

@@ -7,7 +7,7 @@
 | stage | idle |
 | active_memo | — |
 | last_audit | 2026-11-04 |
-| updated | 2026-11-13 |
+| updated | 2026-11-23 |
 | contour_size | Full |
 
 ## Closed Items Log
@@ -75,6 +75,8 @@
 | 2026-11-12 | M3-03 | Publish and verify the HTTPS link | archive/phase-4/ |
 | 2026-11-12 | M7-19 | Start screen, questionnaire screens and coalition tiles | archive/phase-4/ |
 | 2026-11-13 | M7-20 | Second design revision: purpose emphasis, locks, simulator pathways | archive/phase-4/ |
+| 2026-11-22 | M7-21 | Coalition hierarchy, enlarged views and fixed-agenda future card | archive/phase-4/ |
+| 2026-11-23 | M7-22 | First-visit welcome dialog and multilingual inline SVG | archive/phase-4/ |
 | 2026-11-08 | M3-01 | Publication decisions | archive/phase-4/ |
 | 2026-11-08 | M3-02 | Hosted build | archive/phase-4/ |
 
@@ -356,3 +358,13 @@
 | 2026-11-13 | M7-20 | /3-implement | implement → implement | Language-mix bug fix: the frozen supporter-experiment basis and the saved baseline now rename untouched example names on a language switch (translateExampleTitles; names only, numbers untouched); gates green: 3245 unit tests, typecheck/lint/format clean, 404 browser passes (48 skips) |
 | 2026-11-13 | M7-20 | /3-implement | implement → implement | Experiment snapshot captions clarified: «Новая явка сторонников · сегодня» with the turnout-simulation note and overall turnout before → after; «Новая явка + демография · через N лет» with the combined-meaning note; ru/en/he; gates green: 3245 unit tests, typecheck/lint/format clean, 404 browser passes (48 skips) |
 | 2026-11-13 | M7-20 | /4-close | implement → idle | Close gates re-run green: 3245 unit tests, typecheck/lint clean, 404 browser passes (48 skips; one first-pass hosted-parity flake passed isolated and on the full re-run); files reconciled in the memo, backlog ticked, spec 2.2/14.5/14.6 and the brief map synced, memo and plan archived to phase-4; no git yet — the user asked to publish the updated version, handled after the close with explicit authorization |
+| 2026-11-13 | M7-20 | release | idle → idle | Explicitly requested publication: sanitized 369-file working-set snapshot reviewed (added-line scan clean; public LICENSE, pages.yml URL and the M1-01 sanitized row preserved byte-exactly; README keeps the public heading), committed with the account noreply identity and pushed to Election-Public main 4d267bd → b67f69c without history rewrite; the manual Pages workflow dispatch and live verification remain with the user (no gh CLI) |
+| 2026-11-22 | M7-21 | /1-memo | idle → memo | Draft: possible-coalitions block first in the right column, explicit enlarge action, custom-pencil in enlarged detail, first-two default future checks until first manual touch, and a brighter fixed-agenda demographics/turnout model card with the user's Russian thesis in RU/EN/HE; no code or publication |
+| 2026-11-22 | M7-21 | /2-tests | memo → tests | User approved all memo recommendations. Minimal RED suite: `tests/ui/coalitionHierarchy.test.tsx` (4/4 red on order/enlarge/model-card) and `tests/e2e/coalitionHierarchy.spec.ts` (4 project cases red on first-two defaults and custom edit from enlarged detail); no production behaviour changed. |
+| 2026-11-22 | M7-21 | /3-implement | tests → implement | Implemented order, per-tile enlarge, whole-card expand/collapse, pencil in custom detail, first-two future defaults with manual-touch persistence, bright simulator action, model-scope card; later request removed the simulator-card hypothesis and hid favourites/nearest. Gates: 3249 unit, typecheck/lint clean, 408 browser passes (48 skips, two workers). |
+| 2026-11-22 | M7-21 | /3-implement | implement → implement | Clarified fullscreen layout: the parent coalitions card expands, so rules "who will not sit together" enter the large view too; both sections are bounded and centred with no large empty top area. Final re-run: 3249 unit, typecheck/lint clean, 408 browser passes (48 skips, two workers). |
+| 2026-11-22 | M7-21 | /4-close | implement → idle | Final close gates green: 3249 unit tests, typecheck/lint, 408 browser passes (48 skips, two workers); memo/test files reconciled, backlog ticked, spec and project brief synced, welcome-dialog request filed as M7-22, memo and test plan archived to phase-4; no Git/publication. |
+| 2026-11-23 | M7-22 | /1-memo | idle → memo | Draft: one-time native welcome dialog, original inline SVG sun/person-ray art, exact simultaneous RU/HE/EN headings, safe highlighted words, three language buttons, backdrop/Escape/close dismissal, one owned local-storage key and focus/phone/offline tests; no code, tests or publication. |
+| 2026-11-23 | M7-22 | /2-tests | memo → tests | User approved all six recommendations. Added minimal RED storage/UI/e2e tests for the owned one-time key, three-language native dialog, inline art, highlighted exact headings, close routes, focus return, language selection, phone/RTL/axe/offline; production code untouched. |
+| 2026-11-23 | M7-22 | /3-implement | tests → implement | Implemented one-time native welcome dialog, original inline SVG, exact simultaneous RU/HE/EN headings and notes, safe highlights, three language actions, close/backdrop/Escape, focus fallback, owned versioned storage key and clear reset. Gates: 3262 unit, typecheck/lint clean, 414 browser passes (48 skips, two workers); local-only. |
+| 2026-11-23 | M7-22 | /4-close | implement → idle | Final close gates green: 3262 unit tests, typecheck/lint, 414 browser passes (48 skips, two workers); memo/files reconciled, backlog ticked, spec and project brief synced, memo and plan archived; no private Git/public write in close. |

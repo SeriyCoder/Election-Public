@@ -47,11 +47,11 @@ function count(html: string, needle: string): number {
   return html.split(needle).length - 1;
 }
 
-/** The user's exact wording (2026-11-12); verbatim, do not edit. */
+/** The local 2026-11-22 start-card wording. */
 const FILL_BUTTON: Readonly<Record<Locale, string>> = {
-  ru: 'Заполнить анкету (8 партий)',
-  en: 'Fill Out Questionnaire (8 Parties)',
-  he: 'מילוי שאלון (8 מפלגות)',
+  ru: 'Заполнить / ознакомиться с заполнением по умолчанию',
+  en: 'Fill Out / Explore the Pre-filled Defaults',
+  he: 'מילוי / היכרות עם ברירות המחדל המלאות',
 };
 
 const FIFTH_PARTY_NAME: Readonly<Record<Locale, string>> = {
@@ -87,7 +87,9 @@ const TILES_HINT_RU =
 const OPEN_SIMULATOR_RU = 'Открыть Симулятор коалиций →';
 
 const BANNER_RU =
-  'Демография и явка — два главных фактора, с которыми приходится жить. ' +
+  '*Демография и явка* — два главных фактора, с которыми приходится жить, ' +
+  '*если партии, их приоритеты и политическая повестка останутся такими же, ' +
+  'как сегодня, а меняться будет только симулируемая демография*. ' +
   'Двигайте ползунок лет или меняйте явку слева, чтобы увидеть, как выбранные ' +
   'коалиции справа теряют или набирают большинство (61 мандат) в будущем.';
 
@@ -202,8 +204,10 @@ describe('M7-20 second design revision', () => {
     // The old small caption key is replaced, not duplicated.
     expect(translator('ru')('panel.sameNote')).toBe('panel.sameNote');
     const html = appHtml('future');
-    expect(html).toContain('data-future-banner');
-    expect(html).toContain(BANNER_RU);
+    expect(html).toContain('data-future-model-card');
+    expect(html.replace(/<[^>]+>/g, '')).toContain(
+      BANNER_RU.replaceAll('*', ''),
+    );
   });
 });
 

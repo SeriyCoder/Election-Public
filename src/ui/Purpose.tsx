@@ -26,10 +26,14 @@ export function Purpose({
   return (
     <section class="purpose" data-purpose>
       <p class="purpose__goal">{emphasized(t('purpose.goal'))}</p>
-      <p class="purpose__hypothesis-title">{t('purpose.hypothesis.title')}</p>
+      <h2 class="purpose__hypothesis-title">{t('purpose.hypothesis.title')}</h2>
       <p class="purpose__hypothesis">
         {emphasized(t('purpose.hypothesis.text'))}
       </p>
+      <ol class="purpose__paths">
+        <li>{emphasized(t('purpose.hypothesis.path1'))}</li>
+        <li>{emphasized(t('purpose.hypothesis.path2'))}</li>
+      </ol>
       <p class="purpose__note">{t('purpose.note')}</p>
       {onOpenSimulator !== undefined && (
         <>

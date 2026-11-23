@@ -25,9 +25,10 @@ if (root === null) {
   throw new Error('Missing #app root element');
 }
 const example = buildBook(EMPTY_DRAFT, []);
+const storage = browserStorage();
 const store = createStore(
   { screen: 'book', input: example.input, autoFilled: example.filled },
-  { storage: browserStorage() },
+  { storage },
 );
 const createWorker =
   typeof Worker === 'undefined'
@@ -56,6 +57,10 @@ render(
     baselineRunner={baselineRunner}
     previewRunner={previewRunner}
     futureScanRunner={futureScanRunner}
+    welcome={{
+      seen: storage.seenWelcome(),
+      markSeen: storage.markWelcomeSeen,
+    }}
   />,
   root,
 );

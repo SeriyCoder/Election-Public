@@ -381,11 +381,11 @@ describe('M7-16 opening page', () => {
     }
     expect(html).toContain('data-action="start-skip"');
     expect(html.match(/data-action="book-skip"/g)).toHaveLength(1);
-    for (const id of ['eight', 'israel']) {
-      for (const mode of ['book', 'open']) {
-        expect(html).toContain(`data-start="${id}" data-start-mode="${mode}"`);
-      }
+    for (const mode of ['book', 'open']) {
+      expect(html).toContain(`data-start="israel" data-start-mode="${mode}"`);
     }
+    expect(html).toContain('data-start="eight" data-start-mode="book"');
+    expect(html).not.toContain('data-start="eight" data-start-mode="open"');
     expect(html).toContain('data-start="blank"');
     expect(html).not.toContain('book.start.');
     expect(t('book.start.eight.title')).not.toBe('book.start.eight.title');

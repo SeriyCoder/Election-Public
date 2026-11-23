@@ -24,12 +24,17 @@ export function CoalitionTiles({
   readonly run?: CoalitionRun;
 }) {
   const session = store.getState().panel;
-  const { candidates, entries, nearest, tiles, shown, options, existing } =
-    useTileSets(store, scenario, result, run);
+  const { candidates, entries, tiles, shown, options, existing } = useTileSets(
+    store,
+    scenario,
+    result,
+    run,
+  );
   const [detail, setDetail] = useState<string | null>(null);
   const [custom, setCustom] = useState<readonly string[] | null>(null);
   const [customSlot, setCustomSlot] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const lastCount = useRef(candidates.total);
   const [countChange, setCountChange] = useState<readonly number[] | null>(
     null,
@@ -54,33 +59,28 @@ export function CoalitionTiles({
     ? coalitionTileReport(scenario, result.allocation, detailEntry.partyIds)
     : null;
   return (
-    <div data-coalition-tiles class="ws-tiles-box">
+    <div
+      data-coalition-tiles
+      data-tiles-fullscreen={expanded ? '' : undefined}
+      class={`ws-tiles-box${expanded ? ' ws-tiles-box--fullscreen' : ''}`}
+    >
       <header class="ws-head">
-        <h3>{t('panel.tiles')}</h3>
-        <label class="ws-check">
-          <input
-            type="checkbox"
-            checked={session.favouritesOnly}
-            onChange={(event) =>
-              store.setPanelSession({
-                favouritesOnly: event.currentTarget.checked,
-              })
-            }
-          />
-          {t('panel.favourites')}
-        </label>
-        <button
-          type="button"
-          class="ws-button"
-          data-action="tiles-nearest"
-          onClick={() => store.setPanelSession({ tiles: nearest })}
-        >
-          {t('panel.nearest')}
-        </button>
+        <h3>
+          <button
+            type="button"
+            class="ws-title-button"
+            data-action="tiles-expand"
+            aria-expanded={expanded}
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded ? t('panel.collapseTiles') : t('panel.tiles')}
+          </button>
+        </h3>
         {tiles.length < 4 && (
           <button
             type="button"
             class="ws-button"
+            data-action="tile-custom"
             onClick={() => {
               setCustomSlot(null);
               setCustom([]);
@@ -117,7 +117,7 @@ export function CoalitionTiles({
         <p class="ws-tiles-hint">{t('panel.tilesHint')}</p>
         <button
           type="button"
-          class="button button--cta"
+          class="button button--cta ws-open-simulator"
           data-action="open-simulator"
           onClick={() => store.setView('future')}
         >
@@ -308,19 +308,30 @@ export function CoalitionTiles({
                     .join('; ')}
                 </p>
               )}
-              <label class="ws-check">
-                <input
-                  type="checkbox"
-                  checked={store
-                    .getState()
-                    .futureCoalitions.some(
-                      (ids) =>
-                        coalitionKey(ids) === coalitionKey(entry.partyIds),
-                    )}
-                  onChange={() => store.toggleFutureCoalition(entry.partyIds)}
-                />
-                {t('view.future')}
-              </label>
+              <div class="ws-tile-actions">
+                <label class="ws-check">
+                  <input
+                    type="checkbox"
+                    checked={store
+                      .getState()
+                      .futureCoalitions.some(
+                        (ids) =>
+                          coalitionKey(ids) === coalitionKey(entry.partyIds),
+                      )}
+                    onChange={() => store.toggleFutureCoalition(entry.partyIds)}
+                  />
+                  {t('view.future')}
+                </label>
+                <button
+                  type="button"
+                  class="ws-button ws-button--enlarge"
+                  data-action="tile-enlarge"
+                  data-tile-enlarge={entry.key}
+                  onClick={() => setDetail(entry.key)}
+                >
+                  {t('panel.enlarge')}
+                </button>
+              </div>
             </article>
           );
         })}
@@ -335,7 +346,11 @@ export function CoalitionTiles({
         >
           <div class="ws-custom-list">
             {scenario.parties.map((party) => (
-              <label class="ws-custom-pick" key={party.id}>
+              <label
+                class="ws-custom-pick"
+                key={party.id}
+                data-custom-pick={party.id}
+              >
                 <input
                   type="checkbox"
                   checked={custom.includes(party.id)}
@@ -380,6 +395,7 @@ export function CoalitionTiles({
                     old?.label ?? '',
                   ),
                 });
+                setDetail(editing);
                 setCustom(null);
                 setEditing(null);
                 return;
@@ -416,6 +432,22 @@ export function CoalitionTiles({
       )}
       {detailEntry && report && (
         <PanelModal title={detailEntry.label} onClose={() => setDetail(null)}>
+          {detailEntry.key.startsWith('custom:') && (
+            <button
+              type="button"
+              class="ws-icon ws-detail-edit"
+              data-tile-edit={detailEntry.key}
+              aria-label={t('panel.editTile')}
+              title={t('panel.editTile')}
+              onClick={() => {
+                setEditing(detailEntry.key);
+                setCustom(detailEntry.partyIds);
+                setDetail(null);
+              }}
+            >
+              ✎
+            </button>
+          )}
           {report.noAllocation ? (
             <p>{t(`status.noAllocation.${report.noAllocation}`)}</p>
           ) : (

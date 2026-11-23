@@ -335,7 +335,7 @@ test.describe('interaction', () => {
       const problems = watchPage(other);
       await instrument(other);
       await other.goto(APP_URL);
-      await other.locator('[data-action="book-skip"]').click();
+      await other.locator('[data-action="start-skip"]').click();
       await other.locator('[data-locale="en"]').click();
       await loadScenario(other, exported);
       await showView(other, 'seats');

@@ -1151,17 +1151,23 @@ describe('questionnaire navigation bar', () => {
     const stores = [...everyPage().map(({ store }) => store), answered];
     for (const store of stores) {
       const html = render(store);
-      const { page, part, draft, answered: done } = store.getState().book;
+      const { page, part, draft } = store.getState().book;
       const actions = navActions(html);
       const last = page === 'review' && part === partCount(draft, page) - 1;
-      const restart =
-        page === 'review' || (page === 'intro' && done.length > 0);
+      const restart = page === 'review' || page === 'intro';
       expect(actions, page).toEqual([
         'book-skip',
         ...(restart ? ['book-restart'] : []),
         'book-back',
         last ? 'book-build' : 'book-next',
       ]);
+      if (page === 'intro') {
+        for (const marker of ['book-skip', 'book-restart', 'book-next']) {
+          expect(html).toMatch(
+            new RegExp(`data-action="${marker}"[^>]*disabled`),
+          );
+        }
+      }
     }
   });
 

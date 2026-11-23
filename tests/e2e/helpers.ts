@@ -48,8 +48,18 @@ export function watchPage(page: Page): string[] {
 }
 
 /** Runs before the app: reports CSP violations and keeps created blobs. */
-export async function instrument(page: Page): Promise<void> {
-  await page.addInitScript(() => {
+export async function instrument(
+  page: Page,
+  welcomeSeen = true,
+): Promise<void> {
+  await page.addInitScript((seen) => {
+    if (seen) {
+      try {
+        localStorage.setItem('elections-simulator.welcomeSeen.v1', '1');
+      } catch {
+        // Welcome storage can be blocked just as it can in the app.
+      }
+    }
     document.addEventListener('securitypolicyviolation', (event) => {
       console.error(
         `csp ${event.effectiveDirective} blocked ${event.blockedURI}`,
@@ -64,14 +74,14 @@ export async function instrument(page: Page): Promise<void> {
       }
       return original(object);
     };
-  });
+  }, welcomeSeen);
 }
 
 export const test = base.extend<{ problems: string[] }>({
   problems: [
-    async ({ page }, use) => {
+    async ({ page }, use, testInfo) => {
       const problems = watchPage(page);
-      await instrument(page);
+      await instrument(page, !testInfo.file.includes('welcome.spec.ts'));
       await use(problems);
       expect(problems, 'offline guard').toEqual([]);
     },
@@ -90,7 +100,12 @@ export async function openApp(page: Page, locale: Locale = 'en') {
 /** Leaves the questionnaire the app opens with for the editor. */
 export async function skipBook(page: Page) {
   await expect(page.locator('[data-book]')).toBeVisible();
-  await page.locator('[data-action="book-skip"]').click();
+  const start = page.locator('[data-action="start-skip"]');
+  const skip =
+    (await start.count()) > 0
+      ? start
+      : page.locator('[data-action="book-skip"]');
+  await skip.click();
   await expect(page.locator('[data-region="toolbar"]')).toBeVisible();
 }
 
@@ -101,6 +116,20 @@ export async function openBook(page: Page) {
   await page.goto(APP_URL);
   await expect(book(page)).toBeVisible();
   await setLocale(page, 'ru');
+}
+
+/** Opens a ready example; eight now walks its prefilled questionnaire. */
+export async function openReadyExample(
+  page: Page,
+  id: 'eight' | 'israel',
+): Promise<void> {
+  if (id === 'eight') {
+    await page.locator('[data-start="eight"][data-start-mode="book"]').click();
+    await toBuild(page);
+    await page.locator('[data-action="book-build"]').click();
+    return;
+  }
+  await page.locator('[data-start="israel"][data-start-mode="open"]').click();
 }
 
 /** The page and part on screen, as `page#part`. */
@@ -114,7 +143,11 @@ export async function bookAt(page: Page): Promise<string> {
 /** Clicks Next and waits for the page or its part to change. */
 export async function next(page: Page) {
   const current = await bookAt(page);
-  await page.locator('[data-action="book-next"]').click();
+  if ((await page.locator('[data-start-card="blank"]').count()) > 0) {
+    await page.locator('[data-start="blank"]').click();
+  } else {
+    await page.locator('[data-action="book-next"]').click();
+  }
   await expect.poll(() => bookAt(page)).not.toBe(current);
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { ComponentProps } from 'preact';
 import { isStandardValidity } from '../engine/edit';
 import { buildReport } from '../engine/report';
@@ -37,6 +37,12 @@ import type { Derived, Store, ViewId } from './store';
 import { VIEWS } from './store';
 import { useRunner } from './useRunner';
 import { useStore } from './useStore';
+import { WelcomeDialog } from './WelcomeDialog';
+
+export interface WelcomeState {
+  readonly seen: boolean;
+  markSeen(): void;
+}
 
 export interface AppProps {
   readonly store: Store;
@@ -47,6 +53,7 @@ export interface AppProps {
   /** Separate cancellable search for a conversion candidate. */
   readonly previewRunner?: CoalitionRunner;
   readonly futureScanRunner?: FutureScanRunner;
+  readonly welcome?: WelcomeState;
 }
 
 type ResultState = 'ready' | 'no-allocation' | 'invalid';
@@ -255,12 +262,20 @@ export function App({
   baselineRunner,
   previewRunner,
   futureScanRunner,
+  welcome,
 }: AppProps) {
   const state = useStore(store);
   const run = useRunner(runner);
   const baselineRun = useRunner(baselineRunner);
   const derived = store.getDerived();
   const t = useMemo(() => translator(state.language), [state.language]);
+  const [welcomeOpen, setWelcomeOpen] = useState(
+    () => welcome !== undefined && !welcome.seen,
+  );
+  const closeWelcome = () => {
+    welcome?.markSeen();
+    setWelcomeOpen(false);
+  };
   const panelLabels = Object.fromEntries([
     ...Object.entries(state.panel.labels).map(([key, label]) => [
       key,
@@ -473,7 +488,21 @@ export function App({
     return (
       <div class="app" lang={state.language} dir={dir} data-screen="book">
         <PublicNotice t={t} />
-        <BookView store={store} t={t} locale={state.language} />
+        <BookView
+          store={store}
+          t={t}
+          locale={state.language}
+          onWelcome={
+            welcome === undefined ? undefined : () => setWelcomeOpen(true)
+          }
+        />
+        {welcomeOpen && (
+          <WelcomeDialog
+            store={store}
+            language={state.language}
+            onClose={closeWelcome}
+          />
+        )}
       </div>
     );
   }
@@ -486,6 +515,13 @@ export function App({
       data-active-view={state.view}
       data-screen="app"
     >
+      {welcomeOpen && (
+        <WelcomeDialog
+          store={store}
+          language={state.language}
+          onClose={closeWelcome}
+        />
+      )}
       <header class="toolbar" data-region="toolbar">
         <PublicNotice t={t} />
         <span class="toolbar__brand">{t('app.title')}</span>

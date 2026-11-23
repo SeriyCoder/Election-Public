@@ -14,6 +14,22 @@ const notices = {
   he: 'מודל מתמטי לימודי, לא תחזית בחירות. כל החישובים מתבצעים בדפדפן שלך בלבד.',
 } as const;
 
+async function openReadyExample(page: Page, id: 'eight' | 'israel') {
+  if (id === 'eight') {
+    await page.locator('[data-start="eight"][data-start-mode="book"]').click();
+    for (let turns = 0; turns < 30; turns += 1) {
+      const build = page.locator('[data-action="book-build"]');
+      if ((await build.count()) > 0) {
+        await build.click();
+        return;
+      }
+      await page.locator('[data-action="book-next"]').click();
+    }
+    throw new Error('the eight-party questionnaire did not reach build');
+  }
+  await page.locator('[data-start="israel"][data-start-mode="open"]').click();
+}
+
 async function exportInput(page: Page) {
   const download = page.waitForEvent('download');
   await page.locator('[data-action="export"]').click();
@@ -104,6 +120,7 @@ for (const language of ['ru', 'en', 'he'] as const) {
           if (message.type() === 'error') problems.push(message.text());
         });
         await page.goto(origin + PREFIX);
+        await page.locator('[data-welcome-language="he"]').click();
         await expect(page.locator('.app')).toHaveAttribute('lang', 'he');
         for (const locale of ['ru', 'en', 'he'] as const) {
           await page.locator(`[data-locale="${locale}"]`).click();
@@ -112,9 +129,7 @@ for (const language of ['ru', 'en', 'he'] as const) {
           );
         }
         await page.locator(`[data-locale="${language}"]`).click();
-        await page
-          .locator(`[data-start="${start}"][data-start-mode="open"]`)
-          .click();
+        await openReadyExample(page, start);
         await expect(page.locator('[data-public-notice]')).toHaveText(
           notices[language],
         );
@@ -130,10 +145,9 @@ for (const language of ['ru', 'en', 'he'] as const) {
         const current = await exportInput(page);
         peer = await context.newPage();
         await peer.goto(offline);
+        await peer.locator('[data-welcome-language="he"]').click();
         await peer.locator(`[data-locale="${language}"]`).click();
-        await peer
-          .locator(`[data-start="${start}"][data-start-mode="open"]`)
-          .click();
+        await openReadyExample(peer, start);
         expect(await shownSeats(peer)).toEqual(currentSeats);
         const reference = await exportInput(peer);
         expect(serializeScenario(current)).toBe(serializeScenario(reference));

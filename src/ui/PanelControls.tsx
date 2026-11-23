@@ -1459,6 +1459,64 @@ export function IntegratedPanel({
         </PanelBox>
       </div>
       <div class="ws-col">
+        <section class="ws-card" data-panel-coalitions>
+          {message && <p role="status">{message}</p>}
+          {current.validation.ok && current.result ? (
+            <CoalitionTiles
+              store={store}
+              scenario={current.validation.scenario}
+              result={current.result}
+              t={t}
+              run={run}
+            />
+          ) : (
+            <RepairLink action={totals.balanced ? 'smooth' : 'align'} t={t} />
+          )}
+          <div class="ws-rules" data-panel-relations>
+            <div class="ws-head">
+              <h3>{t('panel.rulesTitle')}</h3>
+              <button
+                type="button"
+                class="ws-button"
+                data-action="rules-source"
+                onClick={() => {
+                  apply(restorePanelRules(state.input, state.loadedInput));
+                }}
+              >
+                {t('panel.source')}
+              </button>
+            </div>
+            <p class="ws-hint">{t('panel.rulesHint')}</p>
+            <DirectedRelations
+              parties={input.parties}
+              seats={
+                current.result && !current.result.allocation.noAllocation
+                  ? Object.fromEntries(
+                      current.result.allocation.parties.map((entry) => [
+                        entry.partyId,
+                        entry.seats,
+                      ]),
+                    )
+                  : undefined
+              }
+              refusals={
+                (input.coalitionRules.partyRefusals ??
+                  []) as readonly (readonly string[])[]
+              }
+              t={t}
+              paged={false}
+              onToggle={(from, to) => {
+                const refusals = (input.coalitionRules.partyRefusals ??
+                  []) as readonly (readonly string[])[];
+                const index = refusals.findIndex(
+                  (pair) => pair[0] === from && pair[1] === to,
+                );
+                if (index >= 0) store.removePair('partyRefusals', index);
+                else store.addPair('partyRefusals', from, to);
+              }}
+            />
+          </div>
+        </section>
         <PanelBox
           id="pies"
           title={t('panel.byGroup')}
@@ -1544,64 +1602,6 @@ export function IntegratedPanel({
             )}
           </div>
         </PanelBox>
-        <section class="ws-card" data-panel-coalitions>
-          {message && <p role="status">{message}</p>}
-          {current.validation.ok && current.result ? (
-            <CoalitionTiles
-              store={store}
-              scenario={current.validation.scenario}
-              result={current.result}
-              t={t}
-              run={run}
-            />
-          ) : (
-            <RepairLink action={totals.balanced ? 'smooth' : 'align'} t={t} />
-          )}
-          <div class="ws-rules" data-panel-relations>
-            <div class="ws-head">
-              <h3>{t('panel.rulesTitle')}</h3>
-              <button
-                type="button"
-                class="ws-button"
-                data-action="rules-source"
-                onClick={() => {
-                  apply(restorePanelRules(state.input, state.loadedInput));
-                }}
-              >
-                {t('panel.source')}
-              </button>
-            </div>
-            <p class="ws-hint">{t('panel.rulesHint')}</p>
-            <DirectedRelations
-              parties={input.parties}
-              seats={
-                current.result && !current.result.allocation.noAllocation
-                  ? Object.fromEntries(
-                      current.result.allocation.parties.map((entry) => [
-                        entry.partyId,
-                        entry.seats,
-                      ]),
-                    )
-                  : undefined
-              }
-              refusals={
-                (input.coalitionRules.partyRefusals ??
-                  []) as readonly (readonly string[])[]
-              }
-              t={t}
-              paged={false}
-              onToggle={(from, to) => {
-                const refusals = (input.coalitionRules.partyRefusals ??
-                  []) as readonly (readonly string[])[];
-                const index = refusals.findIndex(
-                  (pair) => pair[0] === from && pair[1] === to,
-                );
-                if (index >= 0) store.removePair('partyRefusals', index);
-                else store.addPair('partyRefusals', from, to);
-              }}
-            />
-          </div>
-        </section>
       </div>
       {correction && (
         <TurnoutCorrection

@@ -34,6 +34,55 @@ body {
 fieldset {
   min-inline-size: 0;
 }
+.ws-card[data-panel-coalitions]:has([data-tiles-fullscreen]) {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  padding: 1rem clamp(1rem, 4vw, 3rem);
+  border: 0;
+  background: #f8fbff;
+}
+.ws-tiles-box--fullscreen {
+  inline-size: min(90rem, 100%);
+  margin-inline: auto;
+}
+.ws-card[data-panel-coalitions]:has([data-tiles-fullscreen]) .ws-rules {
+  inline-size: min(90rem, 100%);
+  margin-inline: auto;
+  padding: 0.75rem 1rem;
+  border: 1px solid #c9d8f0;
+  border-radius: 0.75rem;
+  background: #ffffff;
+}
+.ws-title-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: start;
+}
+.ws-title-button:not([aria-expanded='true'])::after {
+  content: ' ⤢';
+}
+.ws-tiles-box--fullscreen .ws-title-button {
+  color: #1d4ed8;
+}
+.ws-tiles-box--fullscreen .ws-tiles {
+  margin-inline: 0;
+}
+.ws-open-simulator {
+  border-width: 2px;
+  padding: 0.55rem 0.85rem;
+  box-shadow: 0 2px 6px rgb(29 78 216 / 0.22);
+  font-size: 0.9375rem;
+}
 
 select {
   max-inline-size: 100%;
@@ -2361,6 +2410,17 @@ select {
   color: var(--muted);
 }
 
+.book__start > .book__start-intro {
+  flex: 1;
+  padding: 0.375rem 0.5rem;
+  border-inline-start: 4px solid #1d4ed8;
+  background: #ffffff;
+  color: #0c3a75;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .book__start-actions {
   display: flex;
   flex-wrap: wrap;
@@ -4026,6 +4086,21 @@ select {
 .ws .ws-tile-main:not(:disabled):hover {
   background: #ffffff80;
 }
+.ws-tile-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.ws-button--enlarge {
+  flex: none;
+  font-size: 11px;
+  line-height: 1.2;
+}
+.ws-detail-edit {
+  float: inline-end;
+  margin-inline-start: 0.5rem;
+}
 .ws-tile-seats {
   display: flex;
   flex-direction: column;
@@ -4891,9 +4966,18 @@ select {
 
 /* M7-19: inviting start cards and the simulator's purpose. */
 .book__start--accent {
-  border-color: #7aa7e6;
+  order: -1;
+  grid-column: 1 / -1;
+  border: 2px solid #7aa7e6;
   background: #eaf3ff;
-  box-shadow: 0 1px 3px rgb(29 78 216 / 0.15);
+  box-shadow: 0 2px 5px rgb(29 78 216 / 0.18);
+}
+
+.book__start-recommended {
+  flex: none;
+  color: #0c3a75;
+  font-size: 0.875rem;
+  font-weight: 700;
 }
 
 .purpose {
@@ -4919,14 +5003,25 @@ select {
 }
 
 .purpose__hypothesis-title {
-  margin: 0.375rem 0 0;
-  font-weight: 600;
+  margin: 0.5rem 0 0;
+  font-size: 1.125rem;
+  line-height: 1.25;
+  font-weight: 700;
   color: #0c3a75;
 }
 
 .purpose__hypothesis,
 .purpose__workspace {
   margin: 0.25rem 0 0;
+}
+
+.purpose__paths {
+  margin: 0.375rem 0 0;
+  padding-inline-start: 1.5rem;
+}
+
+.purpose__paths li + li {
+  margin-block-start: 0.25rem;
 }
 
 .purpose__note {
@@ -4965,19 +5060,25 @@ select {
     margin: 0;
   }
 
-  .purpose__workspace {
-    grid-column: 1 / span 2;
+  .purpose__paths {
+    grid-column: 2;
     grid-row: 3;
+    margin: 0.125rem 0 0;
   }
 
-  .purpose__note {
+  .purpose__workspace {
     grid-column: 1 / span 2;
     grid-row: 4;
   }
 
+  .purpose__note {
+    grid-column: 1 / span 2;
+    grid-row: 5;
+  }
+
   .purpose__open {
     grid-column: 3;
-    grid-row: 1 / span 4;
+    grid-row: 1 / span 5;
     align-self: center;
     margin: 0;
   }
@@ -5007,19 +5108,27 @@ select {
   font-weight: 600;
 }
 
-/* M7-20: the banner at the top of the future view. */
-.ws-banner {
+/* M7-21: the fixed-agenda model thesis at the top of the future view. */
+.ws-model-card {
   margin: 0 0 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-inline-start: 4px solid var(--accent);
-  border-radius: 0 0.375rem 0.375rem 0;
-  background: #f4f8ff;
+  padding: 0.75rem 1rem;
+  border: 2px solid #efb54d;
+  border-inline-start: 5px solid #d97706;
+  border-radius: 0.5rem;
+  background: #fff7e6;
   font-size: 0.9375rem;
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
-[dir='rtl'] .ws-banner {
-  border-radius: 0.375rem 0 0 0.375rem;
+.ws-model-card h3 {
+  margin: 0;
+  color: #8a4b00;
+  font-size: 1.125rem;
+  font-weight: 800;
+}
+
+.ws-model-card p {
+  margin: 0.25rem 0 0;
 }
 
 /* M7-20: the hint and simulator button beside the coalition tiles. */
@@ -5077,6 +5186,166 @@ select {
   content: '* ';
   color: var(--accent);
   font-weight: 700;
+}
+
+/* M7-22: one-time welcome modal, fully inline and offline. */
+.welcome-dialog {
+  box-sizing: border-box;
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: clamp(0.75rem, 3vw, 1.5rem);
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.welcome-dialog::backdrop {
+  background: rgb(15 23 42 / 0.62);
+  backdrop-filter: blur(6px);
+}
+
+.book__welcome-link {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1d4ed8;
+  font: inherit;
+  font-weight: 700;
+  text-align: start;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.book__welcome-link:hover {
+  color: #1e3a8a;
+}
+
+.welcome-card {
+  position: relative;
+  display: grid;
+  align-content: center;
+  gap: 0.75rem;
+  inline-size: min(48rem, calc(100vw - 1.5rem));
+  max-block-size: calc(100vh - 1.5rem);
+  max-block-size: calc(100dvh - 1.5rem);
+  margin: auto;
+  padding: clamp(1rem, 3vw, 1.75rem);
+  border-radius: 1.125rem;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgb(15 23 42 / 0.35);
+  overflow: auto;
+  color: #17243c;
+}
+
+.welcome-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  min-inline-size: 2.75rem;
+  min-block-size: 2.75rem;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1e3a8a;
+  font-size: 1.75rem;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 0.12);
+}
+
+.welcome-art {
+  display: block;
+  inline-size: min(26rem, 76%);
+  max-block-size: 15rem;
+  margin-inline: auto;
+}
+
+.welcome-headings {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.welcome-language-copy {
+  text-align: center;
+}
+
+.welcome-heading {
+  margin: 0;
+  color: #17243c;
+  font-size: clamp(1.1rem, 2.4vw, 1.45rem);
+  line-height: 1.3;
+  font-weight: 650;
+}
+
+.welcome-heading [data-highlight] {
+  color: #1d4ed8;
+  font-weight: 800;
+}
+
+.welcome-language-copy p {
+  margin: 0.2rem 0 0;
+  color: #64748b;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.welcome-languages {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-block-start: 0.25rem;
+}
+
+.welcome-language {
+  min-block-size: 2.75rem;
+  background: #f8fafc;
+}
+
+.welcome-language--active {
+  border-color: #1d4ed8;
+  background: #dbeafe;
+  color: #0c3a75;
+  font-weight: 700;
+}
+
+@media (max-width: 520px) {
+  .welcome-card {
+    gap: 0.6rem;
+    padding: 0.9rem 0.85rem 0.85rem;
+  }
+
+  .welcome-art {
+    inline-size: min(18rem, 82%);
+    max-block-size: 10rem;
+    margin-block-start: 0.5rem;
+  }
+
+  .welcome-heading {
+    font-size: 1rem;
+  }
+
+  .welcome-language-copy p {
+    font-size: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-dialog,
+  .welcome-card {
+    scroll-behavior: auto;
+  }
 }
 
 /* M7-19: several pages stacked on one screen, scrolled inside the body. */

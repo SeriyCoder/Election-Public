@@ -119,6 +119,8 @@ export interface PanelSession {
   readonly tiles: readonly string[] | null;
   readonly favourites: readonly string[];
   readonly favouritesOnly: boolean;
+  /** False until the person first manages future-coalition checkboxes. */
+  readonly futureSelectionManaged: boolean;
 }
 const EMPTY_PANEL: PanelSession = {
   invalidFields: [],
@@ -134,6 +136,7 @@ const EMPTY_PANEL: PanelSession = {
   tiles: null,
   favourites: [],
   favouritesOnly: false,
+  futureSelectionManaged: false,
 };
 
 /** The year the future view opens on (Section 14.3). */
@@ -226,7 +229,7 @@ export type Screen = 'book' | 'app';
 
 export type StorageNotice = 'cleared' | 'failed';
 
-/** What the app keeps in the browser between visits: the language choice. */
+/** What the store keeps in browser storage: the interface language choice. */
 export interface LanguageStorage {
   load(): string | null;
   save(locale: Locale): void;
@@ -300,6 +303,8 @@ export interface Store {
    * otherwise does nothing. Sets are compared by key, whatever the order.
    */
   toggleFutureCoalition(partyIds: readonly string[]): void;
+  /** Seeds the first two displayed sets once, before the user manages checks. */
+  setDefaultFutureCoalitions(sets: readonly (readonly string[])[]): void;
   /** Null suppresses an automatic match; refused choices leave matches intact. */
   setHistoricalMatch(currentId: string, historicalId: string | null): boolean;
   /** Removes the explicit choice and restores automatic matching when valid. */
@@ -531,7 +536,17 @@ export function createStore(
     lockNotice: false,
     coalitionSelection: initial.coalitionSelection ?? [],
     futureCoalitions: initial.futureCoalitions ?? [],
-    panel: initial.panel ?? EMPTY_PANEL,
+    panel: initial.panel
+      ? {
+          ...initial.panel,
+          futureSelectionManaged:
+            initial.panel.futureSelectionManaged ??
+            (initial.futureCoalitions?.length ?? 0) > 0,
+        }
+      : {
+          ...EMPTY_PANEL,
+          futureSelectionManaged: (initial.futureCoalitions?.length ?? 0) > 0,
+        },
     criticalSets: initial.criticalSets ?? { red: [], orange: [] },
     historicalMatches: initial.historicalMatches ?? [],
     historicalMatchError: initial.historicalMatchError ?? null,
@@ -1281,13 +1296,30 @@ export function createStore(
         commit({
           ...state,
           futureCoalitions: followed.filter((ids) => coalitionKey(ids) !== key),
+          panel: { ...state.panel, futureSelectionManaged: true },
         });
         return;
       }
       if (followed.length >= MAX_FUTURE_COALITIONS) {
         return;
       }
-      commit({ ...state, futureCoalitions: [...followed, [...ids]] });
+      commit({
+        ...state,
+        futureCoalitions: [...followed, [...ids]],
+        panel: { ...state.panel, futureSelectionManaged: true },
+      });
+    },
+    setDefaultFutureCoalitions(sets) {
+      if (
+        state.panel.futureSelectionManaged ||
+        state.futureCoalitions.length > 0
+      ) {
+        return;
+      }
+      commit({
+        ...state,
+        futureCoalitions: sets.slice(0, 2).map((ids) => [...ids]),
+      });
     },
     toggleCriticalParty(color, partyId) {
       if (

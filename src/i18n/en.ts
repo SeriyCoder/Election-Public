@@ -1,6 +1,19 @@
 import type { ru } from './ru';
 
 export const en = {
+  'welcome.dialogLabel': 'Welcome to the election simulator',
+  'welcome.close': 'Close the welcome dialog',
+  'welcome.title.ru.before': 'Добро пожаловать в Симулятор ',
+  'welcome.title.ru.highlight': 'ДЕМОГРАФИЧЕСКИХ',
+  'welcome.title.ru.after': ' выборов Израиля',
+  'welcome.title.he.before': 'ברוכים הבאים לסימולטור הבחירות ',
+  'welcome.title.he.highlight': 'הדמוגרפיות',
+  'welcome.title.he.after': ' של ישראל',
+  'welcome.title.en.before': 'Welcome to the Israel ',
+  'welcome.title.en.highlight': 'DEMOGRAPHIC',
+  'welcome.title.en.after': ' Election Simulator',
+  'welcome.note':
+    'An educational mathematical model for exploring coalitions and turnout.',
   'notice.forecast':
     'An educational mathematical model, not an election forecast. Everything is calculated in your browser only.',
   'book.growth.warning': 'Unusual rate — check the assumption.',
@@ -80,6 +93,7 @@ export const en = {
   'panel.populationNote':
     'Population inferred from votes, composition and turnout is a scenario assumption, not evidence about real voters.',
   'panel.tiles': 'Possible Coalitions',
+  'panel.collapseTiles': 'Standard view',
   'panel.tilesHint':
     'Tick up to 4 options and check whether they survive sector growth and turnout shifts',
   'panel.openSimulator': 'Open the Coalition Simulator →',
@@ -153,8 +167,9 @@ export const en = {
   'panel.growthHint':
     'Growth per year, % · share on the right: today → chosen year',
   'panel.sameCoalitions': 'The same coalitions over the years',
+  'panel.modelTitle': 'Model scope (with today’s agenda unchanged)',
   'panel.futureBanner':
-    'Demographics and turnout are the two main factors we have to live with. Move the year slider or change turnout on the left to see how the chosen coalitions on the right lose or gain a majority (61 seats) in the future.',
+    '*Demographics and turnout* are the two main factors to account for, *if parties, their priorities and the political agenda stay as they are today and only the simulated demographics change*. Move the year slider or change turnout on the left to see how the chosen coalitions on the right lose or gain a majority (61 seats) in the future.',
   'panel.coefLegend': '−1: no one · 0: as in the base · +1: everyone',
   'panel.resetTurnout': 'Reset turnout',
   'panel.coefficient': 'Turnout coefficient',
@@ -925,7 +940,7 @@ export const en = {
     'Type your own name or press ▾ to choose a ready list. An empty field keeps the suggested name.',
   'book.page.people.set.question': 'Which voter groups shall we use?',
   'book.page.people.set.explain':
-    'Take the Basic set for Israel or describe your own groups. On the right: example group shares from the CBS.',
+    'Take the Basic set for Israel or describe your own groups. Look at the example group shares from the CBS.',
   'book.page.people.count.question': 'How many voter groups will there be?',
   'book.page.people.count.explain':
     'Every voter belongs to exactly one group. Choose from {min} to {max}.',
@@ -1103,13 +1118,17 @@ export const en = {
   'book.skip': 'Skip the questionnaire',
   'purpose.goal':
     'Election outcomes are largely set by *demographics* and sector *turnout*. The simulation aims to show which coalitions are possible under the current demographic balance and how the picture changes over time.',
-  'purpose.hypothesis.title': 'Hypothesis for discussion',
+  'purpose.hypothesis.title': 'Hypothesis for Discussion',
   'purpose.hypothesis.text':
-    'Without a union of the *two large secular parties* — right-wing and centrist — it is hard to form a government that depends neither on religious nor on Arab parties. In the demographic future the task gets harder still: shared values are needed.',
+    'Without new coalition frameworks, it is difficult to form a secular government independent of religious parties — and future demographic trends make this challenge even greater. Within this model, two main paths can be explored:',
+  'purpose.hypothesis.path1':
+    '*An alliance of the two large secular parties (right and center)*, bridging mutual divides around a shared agenda.',
+  'purpose.hypothesis.path2':
+    '*Including Arab parties as equal, legitimate partners* in a centrist government, accompanied by adjusting national programs and perspectives to align with such civic unity.',
   'purpose.workspace':
     'Change shares and turnout on the left — seats and the *majority* are recalculated immediately. "Coalition simulations" shows how the chosen coalitions fare in the future.',
   'purpose.note':
-    'The simulator computes seats and the cooperation you set; it draws no political conclusions.',
+    'The simulator calculates seats and user-defined compatibility rules; it does not draw political conclusions.',
   'book.example.about.religiousZionism':
     'Parties that represent, among others, settlers and communities beyond the Green Line',
   'book.example.about.nationalCamp': 'Centrist, secular, market-oriented camp',
@@ -1124,9 +1143,10 @@ export const en = {
     'An empty questionnaire: you set the parties, groups and percentages.',
   'book.start.begin': 'Start the questionnaire',
   'book.start.eight.title': '8 parties (free names)',
-  'book.start.eight.fill': 'Fill Out Questionnaire (8 Parties)',
+  'book.start.eight.recommended': 'Recommended for the first visit',
+  'book.start.eight.fill': 'Fill Out / Explore the Pre-filled Defaults',
   'book.start.eight.text':
-    'Eight lists, seven groups, turnout, growth and coalition refusals already filled in.',
+    'New to the simulator? Start with this option: keep the values unchanged, walk through every setting, and test how it works — everything is filled in with defaults.',
   'book.start.israel.title': '2022 (educational)',
   'book.start.israel.text': 'The six 2022 lists and the basic Israeli groups.',
   'book.start.skip.title': 'No questionnaire',

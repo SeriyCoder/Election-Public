@@ -116,6 +116,13 @@ export function useTileSets(
   const shown = tiles
     .map((key) => entries.find((entry) => entry.key === key))
     .filter((entry) => entry !== undefined);
+  useEffect(() => {
+    if (shown.length > 0) {
+      store.setDefaultFutureCoalitions(
+        shown.slice(0, 2).map((entry) => entry.partyIds),
+      );
+    }
+  }, [store, shown]);
   const options = [...entries].sort(
     (a, b) =>
       (b.key.startsWith('custom:') ? 1 : 0) -

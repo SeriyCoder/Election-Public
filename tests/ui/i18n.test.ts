@@ -114,10 +114,15 @@ describe('missing-key check', () => {
 
   it('translates English and Hebrew rather than copying Russian', () => {
     const reference = TABLES.ru as Record<string, string>;
+    // M7-22 deliberately renders the exact three welcome headings at once,
+    // so their literal segments are identical in all three UI tables.
+    const simultaneousWelcome = new Set(
+      referenceKeys.filter((key) => key.startsWith('welcome.title.')),
+    );
     for (const locale of ['en', 'he'] as const) {
       const table = TABLES[locale] as Record<string, string>;
       const copied = referenceKeys.filter(
-        (key) => table[key] === reference[key],
+        (key) => !simultaneousWelcome.has(key) && table[key] === reference[key],
       );
       expect(copied, locale).toEqual([]);
     }

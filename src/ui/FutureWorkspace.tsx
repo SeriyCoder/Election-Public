@@ -33,6 +33,7 @@ import {
 import type { Store } from './store';
 import type { CoalitionRun } from './coalitionRunner';
 import { useTileSets, type TileEntry } from './tileSets';
+import { emphasized } from './Purpose';
 
 const OTHERS = '#d8dee8';
 
@@ -259,12 +260,16 @@ export function FutureWorkspace({
       ))}
     </div>
   );
+  const modelCard = (
+    <section class="ws-model-card" data-future-model-card>
+      <h3>{t('panel.modelTitle')}</h3>
+      <p>{emphasized(t('panel.futureBanner'))}</p>
+    </section>
+  );
   if (!source)
     return (
       <div class="ws-future">
-        <p class="ws-banner" data-future-banner>
-          {t('panel.futureBanner')}
-        </p>
+        {modelCard}
         {modes}
         {timeline()}
         <p role="status">{t('panel.stale')}</p>
@@ -403,9 +408,7 @@ export function FutureWorkspace({
   const base = derived.result;
   return (
     <div class="ws-future" data-future-current={mode}>
-      <p class="ws-banner" data-future-banner>
-        {t('panel.futureBanner')}
-      </p>
+      {modelCard}
       {modes}
       {timeline()}
       <div class="ws-fmain">

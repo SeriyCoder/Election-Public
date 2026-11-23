@@ -59,9 +59,31 @@ describe('storage keys', () => {
     expect(LANGUAGE_KEY).toBe('elections-simulator.language');
     expect(LANGUAGE_KEY.startsWith(STORAGE_PREFIX)).toBe(true);
   });
+
+  it('owns a versioned first-visit welcome key under the app prefix', () => {
+    const key = 'elections-simulator.welcomeSeen.v1';
+    expect(key.startsWith(STORAGE_PREFIX)).toBe(true);
+  });
 });
 
 describe('browserStorage', () => {
+  type WelcomeStorage = ReturnType<typeof browserStorage> & {
+    seenWelcome(): boolean;
+    markWelcomeSeen(): void;
+  };
+
+  it('remembers the first-visit welcome and survives blocked storage', () => {
+    const area = new FakeStorage();
+    const storage = browserStorage(() => area) as WelcomeStorage;
+    expect(storage.seenWelcome()).toBe(false);
+    storage.markWelcomeSeen();
+    expect(storage.seenWelcome()).toBe(true);
+    expect(area.keys()).toEqual(['elections-simulator.welcomeSeen.v1']);
+    const blockedStorage = browserStorage(blocked) as WelcomeStorage;
+    expect(blockedStorage.seenWelcome()).toBe(false);
+    expect(() => blockedStorage.markWelcomeSeen()).not.toThrow();
+  });
+
   it('loads the stored language and null when there is none', () => {
     expect(browserStorage(() => new FakeStorage()).load()).toBeNull();
     const area = new FakeStorage({ [LANGUAGE_KEY]: 'he' });

@@ -67,6 +67,7 @@ export interface BookViewProps {
   readonly store: Store;
   readonly t: Translate;
   readonly locale: Locale;
+  readonly onWelcome?: () => void;
 }
 
 const QUESTION_ID = 'book-question';
@@ -337,6 +338,7 @@ function Head({
   inert,
   locale,
   t,
+  onWelcome,
 }: {
   readonly store: Store;
   readonly spec: PageSpec;
@@ -345,13 +347,27 @@ function Head({
   readonly inert: boolean;
   readonly locale: Locale;
   readonly t: Translate;
+  readonly onWelcome?: () => void;
 }) {
   const step = stepText(spec, t);
   return (
     <header class="book__head" inert={inert}>
-      <p class="book__chapter" data-chapter={spec.chapter} data-chapter-label>
-        {chapterLabel(spec.chapter, t)}
-      </p>
+      {spec.chapter === 0 && onWelcome !== undefined ? (
+        <button
+          type="button"
+          class="book__chapter book__welcome-link"
+          data-chapter={spec.chapter}
+          data-chapter-label
+          data-action="open-welcome"
+          onClick={onWelcome}
+        >
+          {chapterLabel(spec.chapter, t)}
+        </button>
+      ) : (
+        <p class="book__chapter" data-chapter={spec.chapter} data-chapter-label>
+          {chapterLabel(spec.chapter, t)}
+        </p>
+      )}
       {step !== null && (
         <p class="book__step" data-step>
           {step}
@@ -1473,27 +1489,36 @@ function StartChoices({
             class={`book__start${id === 'eight' ? ' book__start--accent' : ''}`}
             data-start-card={id}
           >
+            {id === 'eight' && (
+              <small class="book__start-recommended">
+                {t('book.start.eight.recommended')}
+              </small>
+            )}
             <b>{t(`book.start.${id}.title`)}</b>
-            <span>{t(`book.start.${id}.text`)}</span>
+            <span class={id === 'eight' ? 'book__start-intro' : undefined}>
+              {t(`book.start.${id}.text`)}
+            </span>
             <div class="book__start-actions">
-              {([false, true] as const).map((open) => (
-                <button
-                  key={`${open}`}
-                  type="button"
-                  class={`button button--small${!open && id === 'eight' ? ' button--cta' : ''}`}
-                  data-start={id}
-                  data-start-mode={open ? 'open' : 'book'}
-                  onClick={() => store.startBook(id, open)}
-                >
-                  {t(
-                    open
-                      ? 'book.start.open'
-                      : id === 'eight'
-                        ? 'book.start.eight.fill'
-                        : 'book.start.book',
-                  )}
-                </button>
-              ))}
+              {(id === 'eight' ? [false] : ([false, true] as const)).map(
+                (open) => (
+                  <button
+                    key={`${open}`}
+                    type="button"
+                    class={`button button--small${!open && id === 'eight' ? ' button--cta' : ''}`}
+                    data-start={id}
+                    data-start-mode={open ? 'open' : 'book'}
+                    onClick={() => store.startBook(id, open)}
+                  >
+                    {t(
+                      open
+                        ? 'book.start.open'
+                        : id === 'eight'
+                          ? 'book.start.eight.fill'
+                          : 'book.start.book',
+                    )}
+                  </button>
+                ),
+              )}
             </div>
           </li>
         ))}
@@ -2042,9 +2067,9 @@ function PageBlock({
  * Section 14.5 questionnaire screen: the pages of one screen stacked (M7-19),
  * or the facts page, no results.
  */
-export function BookView({ store, t, locale }: BookViewProps) {
+export function BookView({ store, t, locale, onWelcome }: BookViewProps) {
   const { book } = store.getState();
-  const { draft, page, part, facts, confirm, answered } = book;
+  const { draft, page, part, facts, confirm } = book;
   const sheet = useRef<HTMLFormElement>(null);
   const [chosenParty, setChosenParty] = useState<number | null>(null);
 
@@ -2103,6 +2128,7 @@ export function BookView({ store, t, locale }: BookViewProps) {
           inert={blocked}
           locale={locale}
           t={t}
+          onWelcome={onWelcome}
         />
         <div
           class={`book__body${
@@ -2162,22 +2188,22 @@ export function BookView({ store, t, locale }: BookViewProps) {
             type="button"
             class="button"
             data-action="book-skip"
+            disabled={page === 'intro'}
             onClick={() => store.skipBook()}
           >
             {t('book.skip')}
           </button>
-          {!facts &&
-            (spec.kind === 'review' ||
-              (spec.kind === 'intro' && answered.length > 0)) && (
-              <button
-                type="button"
-                class="button"
-                data-action="book-restart"
-                onClick={() => store.restartBook()}
-              >
-                {t('book.restart')}
-              </button>
-            )}
+          {!facts && (spec.kind === 'review' || spec.kind === 'intro') && (
+            <button
+              type="button"
+              class="button"
+              data-action="book-restart"
+              disabled={page === 'intro'}
+              onClick={() => store.restartBook()}
+            >
+              {t('book.restart')}
+            </button>
+          )}
           <div class="book__steps">
             {facts ? (
               <button
@@ -2213,6 +2239,7 @@ export function BookView({ store, t, locale }: BookViewProps) {
                 type="submit"
                 class="button button--primary"
                 data-action="book-next"
+                disabled={page === 'intro'}
               >
                 {t('book.next')}
               </button>

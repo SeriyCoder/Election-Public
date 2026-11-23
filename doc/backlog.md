@@ -941,3 +941,37 @@ requires separate approval.
   browser passes (48 skips); offline file within the 900000-byte budget.
   Deviations are in `doc/work/archive/phase-4/M7-20-memo.md` and
   `M7-20-test-plan.md`.
+- [x] M7-21 Coalition workspace hierarchy and future-model clarity
+  (requested 2026-11-22). Local-only until the user separately asks to
+  publish. Put the "Possible coalitions" block at the top of the Coalitions
+  view's right column; place "How each group votes" below it. Give every
+  coalition tile an explicit "Enlarge" action, and keep the pencil/edit action
+  available when a custom coalition is enlarged. Add future-simulation
+  selection by checkbox; until the user first changes it, exactly the first
+  two of the four shown coalitions are selected for "Coalition simulations".
+  Replace the demographic-future introduction with a brighter, explicit
+  model thesis: the simulation changes turnout/demography while preserving
+  today's parties, priorities and political agenda; under unchanged positions,
+  the two-large-secular-parties hypothesis becomes harder over time. RU/EN/HE
+  with RTL. Preserve arithmetic, offline operation and the existing scenario
+  schema.
+  Closed 2026-11-22: 3249 unit tests, strict types/lint, 408 browser passes
+  (48 skips, two workers). The fullscreen card includes coalition rules,
+  keeps a bounded centred layout, and returns to normal view.
+- [x] M7-22 Welcome dialog with autonomous multilingual sun-and-people SVG
+  (requested 2026-11-22). Local-only until a later explicit publish request.
+  First-visit modal with blurred backdrop, close-by-×/backdrop/Escape,
+  40×40 touch target, white rounded card and three bottom language buttons
+  (Русский / English / עברית) that both select language and close the dialog.
+  Show once, remembered in the local `storage.ts` key namespace; no scenario
+  state change. Centre an original inline SVG only — warm sun, geometric
+  person rays and respectful visual diversity across Israeli society, no
+  external image/runtime network. Three simultaneous headings underneath
+  (RU/HE/EN with correct direction and inert highlighted keyword rendering)
+  using the exact user text; RU, HE and EN note that this is an educational
+  mathematical model for coalitions and turnout. Accessibility, phone fit,
+  Escape/focus return and offline build must be tested. 
+  Closed 2026-11-23: 3262 unit tests, strict types/lint, 414 browser passes
+  (48 skips, two workers), no external runtime request; the questionnaire's
+  "Вступление" reopens the same dialog on demand. Memo and plan are archived
+  under `doc/work/archive/phase-4/`.

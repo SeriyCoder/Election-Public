@@ -65,7 +65,19 @@ try {
 
   const indexUrl = pathToFileURL(resolve(outputDirectory, 'index.html')).href;
   await page.goto(indexUrl, { waitUntil: 'load' });
-  await page.locator('[data-start="eight"][data-start-mode="open"]').click();
+  await page.locator('[data-welcome-language="he"]').click();
+  await page.locator('[data-start="eight"][data-start-mode="book"]').click();
+  for (let turns = 0; turns < 30; turns += 1) {
+    const build = page.locator('[data-action="book-build"]');
+    if ((await build.count()) > 0) {
+      await build.click();
+      break;
+    }
+    await page.locator('[data-action="book-next"]').click();
+  }
+  await page
+    .locator('[data-action="book-build"]')
+    .waitFor({ state: 'detached' });
   await page.locator('.app[data-active-view="coalitions"]').waitFor({
     state: 'visible',
   });

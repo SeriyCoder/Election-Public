@@ -7,6 +7,7 @@ import {
   bookPage,
   expect,
   nextTo,
+  openReadyExample,
   openBook,
   test,
   toBuild,
@@ -86,9 +87,7 @@ test.describe('M7-16 ready examples at the start', () => {
       page,
     }) => {
       await openBook(page);
-      await page
-        .locator(`[data-start="${id}"][data-start-mode="open"]`)
-        .click();
+      await openReadyExample(page, id);
       await expect(page.locator('.app')).toHaveAttribute(
         'data-active-view',
         'coalitions',

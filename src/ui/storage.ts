@@ -4,6 +4,7 @@ import type { LanguageStorage } from './store';
 /** Every key the app writes starts with this; nothing else is ever removed. */
 export const STORAGE_PREFIX = 'elections-simulator.';
 export const LANGUAGE_KEY = `${STORAGE_PREFIX}language`;
+export const WELCOME_KEY = `${STORAGE_PREFIX}welcomeSeen.v1`;
 
 function defaultArea(): Storage {
   return window.localStorage;
@@ -15,7 +16,10 @@ function defaultArea(): Storage {
  */
 export function browserStorage(
   area: () => Storage = defaultArea,
-): LanguageStorage {
+): LanguageStorage & {
+  seenWelcome(): boolean;
+  markWelcomeSeen(): void;
+} {
   return {
     load() {
       try {
@@ -29,6 +33,20 @@ export function browserStorage(
         area().setItem(LANGUAGE_KEY, locale);
       } catch {
         // Storage may be disabled (private mode, file:// policies).
+      }
+    },
+    seenWelcome() {
+      try {
+        return area().getItem(WELCOME_KEY) === '1';
+      } catch {
+        return false;
+      }
+    },
+    markWelcomeSeen() {
+      try {
+        area().setItem(WELCOME_KEY, '1');
+      } catch {
+        // A blocked store must not prevent closing the dialog for this visit.
       }
     },
     clear() {
