@@ -1,4 +1,4 @@
-# Election-Public
+# Israel-Election-Simulator
 
 Offline-first educational simulator of Israeli elections, turnout, seat allocation, and coalitions. Not an election forecast.
 

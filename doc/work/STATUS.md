@@ -7,7 +7,7 @@
 | stage | idle |
 | active_memo | — |
 | last_audit | 2026-11-04 |
-| updated | 2026-11-23 |
+| updated | 2026-11-25 |
 | contour_size | Full |
 
 ## Closed Items Log
@@ -77,6 +77,7 @@
 | 2026-11-13 | M7-20 | Second design revision: purpose emphasis, locks, simulator pathways | archive/phase-4/ |
 | 2026-11-22 | M7-21 | Coalition hierarchy, enlarged views and fixed-agenda future card | archive/phase-4/ |
 | 2026-11-23 | M7-22 | First-visit welcome dialog and multilingual inline SVG | archive/phase-4/ |
+| 2026-11-25 | M7-23 | Preserve party compositions when adding a questionnaire group | archive/phase-4/ |
 | 2026-11-08 | M3-01 | Publication decisions | archive/phase-4/ |
 | 2026-11-08 | M3-02 | Hosted build | archive/phase-4/ |
 
@@ -368,3 +369,8 @@
 | 2026-11-23 | M7-22 | /2-tests | memo → tests | User approved all six recommendations. Added minimal RED storage/UI/e2e tests for the owned one-time key, three-language native dialog, inline art, highlighted exact headings, close routes, focus return, language selection, phone/RTL/axe/offline; production code untouched. |
 | 2026-11-23 | M7-22 | /3-implement | tests → implement | Implemented one-time native welcome dialog, original inline SVG, exact simultaneous RU/HE/EN headings and notes, safe highlights, three language actions, close/backdrop/Escape, focus fallback, owned versioned storage key and clear reset. Gates: 3262 unit, typecheck/lint clean, 414 browser passes (48 skips, two workers); local-only. |
 | 2026-11-23 | M7-22 | /4-close | implement → idle | Final close gates green: 3262 unit tests, typecheck/lint, 414 browser passes (48 skips, two workers); memo/files reconciled, backlog ticked, spec and project brief synced, memo and plan archived; no private Git/public write in close. |
+| 2026-11-23 | M7-23 | /1-memo | idle → memo | Draft: group-count increase currently resets all party compositions to equal defaults; memo proposes ID-preserving composition migration with new group cells at 0%, exact 100% retention and regression proof for the reported eight-group scenario. No code/tests changed. |
+| 2026-11-25 | M7-23 | /2-tests | memo → tests | User approved the memo for a sequential `/2-tests → /3-implement` run. Added one pure/UI exact-retention test (all eight parties, 7→8 groups, new zero, deterministic 120-seat build) and one browser path assertion; implementation untouched. |
+| 2026-11-25 | M7-23 | /3-implement | tests → implement | Implemented shape-aware compose migration by group ID: old party rows retained exactly, new groups appended as `0`, removed groups omitted with normal remainder. Gates green: 3263 unit, typecheck/lint, 416 browser passes (48 skips, two workers); spec synced. |
+| 2026-11-25 | M7-23 | /4-close | implement → idle | Final close gates green: 3263 unit, typecheck/lint, 416 browser passes (48 skips, two workers); files reconciled, backlog ticked, spec/project brief synced, memo and plan archived; user requested online publication, performed as a separate release step. |
+| 2026-11-23 | M7-22 | release | idle → idle | User explicitly requested GitHub publication. Sanitized candidate scan and ancestry check passed; public LICENSE, pages.yml and M1-01 sanitised row preserved byte-identically. Pushed fast-forward `b67f69c..65269b3` to `SeriyCoder/Election-Public` main with noreply identity. Browser session was signed out, so the manual Pages workflow could not be dispatched; source commit is verified, hosted deployment still needs the user's one-click run. |

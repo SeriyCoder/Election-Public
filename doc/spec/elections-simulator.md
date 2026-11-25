@@ -1659,6 +1659,11 @@ and each party's composition (since M7-15 always distributed, on one page;
 since 2026-11-04 each group cell has a lock that keeps its exact value when
 the party is aligned to 100%, the others sharing the rest in proportion, and
 the percent sliders move in steps of 0.25);
+since M7-23, increasing the own-group count preserves every existing party
+cell by group ID and appends each new group's cell as exact 0%; decreasing the
+count removes only the deleted columns and leaves the normal under-100
+remainder for the person to resolve. Party-set or group-set changes still use
+their normal fresh suggestions, never a migrated composition;
 a check of known voter contributions and, only when
 determinable, the implied population. Overall turnout has no question: the
 engine derives it exactly when determined; otherwise the explicit fallback

@@ -740,8 +740,26 @@ function usable(
   parsed: ParsedPage,
 ): readonly string[] | null {
   const stored = draft.values[page];
-  if (stored === undefined || stored.shape !== shapeOf(ctx, parsed.section)) {
+  if (stored === undefined) {
     return null;
+  }
+  if (stored.shape !== shapeOf(ctx, parsed.section)) {
+    if (parsed.section !== 'compose') return null;
+    const [storedParties, storedSet, storedGroupList] = stored.shape.split(':');
+    if (
+      storedParties !== ctx.parties.join(',') ||
+      storedSet !== ctx.set ||
+      storedGroupList === undefined
+    ) {
+      return null;
+    }
+    const storedGroups =
+      storedGroupList === '' ? [] : storedGroupList.split(',');
+    if (stored.texts.length !== storedGroups.length) return null;
+    return ctx.groupIds.map((groupId) => {
+      const old = storedGroups.indexOf(groupId);
+      return old < 0 ? '0' : stored.texts[old]!;
+    });
   }
   if (isNames(parsed.section)) {
     return flatPairs(pairsOf(ctx, parsed.section));

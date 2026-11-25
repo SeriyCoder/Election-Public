@@ -975,3 +975,17 @@ requires separate approval.
   (48 skips, two workers), no external runtime request; the questionnaire's
   "Вступление" reopens the same dialog on demand. Memo and plan are archived
   under `doc/work/archive/phase-4/`.
+- [x] M7-23 Preserve party compositions when adding a questionnaire group
+  (reported 2026-11-23 with `questionnaire.json`). A group-count increase in a
+  party-mode questionnaire currently changes the `compose` shape, so every
+  saved party composition is discarded and replaced by equal defaults; with
+  all parties drawing the same shares from every group, demographic changes
+  scale every party identically and seats do not move. Keep every existing
+  party/group cell exactly, add each new group at 0% for every party, preserve
+  100% per party, and show the model's normal prompts when the user later
+  transfers weight to the new group. Handle own-group renames/deletions and
+  count decreases without reintroducing the reset. No scenario schema or
+  Hamilton/coalition arithmetic change.
+  Closed 2026-11-25: 3263 unit tests, typecheck/lint, 416 browser passes
+  (48 skips, two workers). Regression proven with the reported 7→8-group
+  path; prior composition rows remain exact and the new group is 0%.

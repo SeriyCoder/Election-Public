@@ -60,6 +60,7 @@ import {
   EXAMPLE_LISTS,
 } from '../../src/ui/catalog';
 import { presetInput } from '../../src/ui/presets';
+import { startExample } from '../../src/ui/startExamples';
 
 type Json = Record<string, unknown>;
 /** Texts by index; null leaves that field as it is. */
@@ -838,6 +839,36 @@ describe('entities', () => {
 });
 
 describe('editing', () => {
+  it('keeps ready party compositions when an eighth group is added', () => {
+    const { draft, answered } = startExample('eight', 'ru');
+    const before = shownTexts(draft, 'compose');
+    const changed = editPage(draft, 'people.count', 0, '8');
+    const after = shownTexts(changed, 'compose');
+    const partyCount = 8;
+    const oldGroupCount = 7;
+    const newGroupCount = 8;
+    for (let party = 0; party < partyCount; party += 1) {
+      const oldAt = party * oldGroupCount;
+      const newAt = party * newGroupCount;
+      expect(after.slice(newAt, newAt + oldGroupCount)).toEqual(
+        before.slice(oldAt, oldAt + oldGroupCount),
+      );
+      expect(after[newAt + oldGroupCount]).toBe('0');
+    }
+    const first = buildBook(changed, answered);
+    const second = buildBook(changed, answered);
+    expect(first.input).toEqual(second.input);
+    const checked = validateScenario(first.input);
+    expect(checked.ok).toBe(true);
+    if (!checked.ok) return;
+    expect(
+      runSeats(checked.scenario).allocation.parties.reduce(
+        (sum, row) => sum + row.seats,
+        0,
+      ),
+    ).toBe(120);
+  });
+
   it('stores the text as typed and keeps the other shown values', () => {
     const draft = typed(legacyDraftOf({}), 'compose.0', ['', '33,5']);
     expect(shownTexts(draft, 'compose.0')).toEqual(['', '33,5', '25', '25']);
@@ -879,8 +910,8 @@ describe('editing', () => {
       '10',
     ]);
     const three = typed(typedFour, 'people.count', ['3']);
-    expect(shownTexts(three, 'compose.1')).toEqual(['34', '33', '33']);
-    expect(isSuggested(three, 'compose.1')).toBe(true);
+    expect(shownTexts(three, 'compose.1')).toEqual(['40', '30', '20']);
+    expect(isSuggested(three, 'compose.1')).toBe(false);
     const four = typed(three, 'people.count', ['4']);
     expect(shownTexts(four, 'compose.1')).toEqual(['40', '30', '20', '10']);
   });

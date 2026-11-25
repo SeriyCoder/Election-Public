@@ -158,4 +158,26 @@ test.describe('M7-16 ready examples at the start', () => {
       ),
     ).toEqual(expectedSeats(fixture()));
   });
+
+  test('keeps the party compositions when the questionnaire gains an eighth group', async ({
+    page,
+  }) => {
+    await openBook(page);
+    await page.locator('[data-start="eight"][data-start-mode="book"]').click();
+    await nextTo(page, 'people.count');
+    await page
+      .locator('[data-book-page="people.count"] input[data-book-field="0"]')
+      .fill('8');
+    await nextTo(page, 'compose');
+    expect((await inputs(page, 'compose')).slice(0, 8)).toEqual([
+      '31.2',
+      '38.79',
+      '14.66',
+      '9.38',
+      '0',
+      '0',
+      '5.97',
+      '0',
+    ]);
+  });
 });
